@@ -17,8 +17,8 @@ builder.Services.AddDbContext<DocVaultDbContext>(options =>
 // Repositories & Services (Salama / Dashaev), jeweils eigene Zeile wegen Merge-Konflikten:
 builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
 builder.Services.AddScoped<IDocumentService, DocumentService>();
-// builder.Services.AddScoped<IFolderRepository, FolderRepository>();
-// builder.Services.AddScoped<IFolderService, FolderService>();
+builder.Services.AddScoped<IFolderRepository, FolderRepository>();
+builder.Services.AddScoped<IFolderService, FolderService>();
 
 var app = builder.Build();
 
