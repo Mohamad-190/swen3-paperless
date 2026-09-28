@@ -10,7 +10,7 @@ public class DocVaultDbContext : DbContext
     }
 
     public DbSet<DocumentEntity> Documents => Set<DocumentEntity>();
-    // Dashaev: public DbSet<FolderEntity> Folders => Set<FolderEntity>();
+    public DbSet<FolderEntity> Folders => Set<FolderEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -34,6 +34,17 @@ public class DocVaultDbContext : DbContext
             entity.Property(d => d.ContentType).IsRequired().HasMaxLength(100);
             entity.Property(d => d.Status).HasConversion<string>().HasMaxLength(20);
             entity.HasIndex(d => d.FolderId);
+        });
+
+        modelBuilder.Entity<FolderEntity>(entity =>
+        {
+            entity.HasKey(f => f.Id);
+            entity.Property(f => f.Name).IsRequired().HasMaxLength(100);
+            entity.Property(f => f.Description).HasMaxLength(500);
+            entity.HasMany(f => f.Documents)
+                .WithOne(d => d.Folder)
+                .HasForeignKey(d => d.FolderId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }
