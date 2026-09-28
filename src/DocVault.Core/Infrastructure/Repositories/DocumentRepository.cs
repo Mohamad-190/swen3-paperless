@@ -25,6 +25,13 @@ public class DocumentRepository : IDocumentRepository
         return await _context.Documents.FirstOrDefaultAsync(d => d.Id == id, ct);
     }
 
+    public async Task<DocumentEntity?> GetByIdWithTagsAsync(Guid id, CancellationToken ct = default)
+    {
+        return await _context.Documents
+            .Include(d => d.Tags)
+            .FirstOrDefaultAsync(d => d.Id == id, ct);
+    }
+
     public async Task<DocumentEntity> AddAsync(DocumentEntity document, CancellationToken ct = default)
     {
         _context.Documents.Add(document);

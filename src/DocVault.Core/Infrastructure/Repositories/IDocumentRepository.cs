@@ -8,6 +8,8 @@ public interface IDocumentRepository
 
     Task<DocumentEntity?> GetByIdAsync(Guid id, CancellationToken ct = default);
 
+    Task<DocumentEntity?> GetByIdWithTagsAsync(Guid id, CancellationToken ct = default);
+
     Task<DocumentEntity> AddAsync(DocumentEntity document, CancellationToken ct = default);
 
     Task UpdateAsync(DocumentEntity document, CancellationToken ct = default);
