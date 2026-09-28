@@ -21,13 +21,13 @@ public class FolderService : IFolderService
     public async Task<IReadOnlyList<FolderDto>> GetAllAsync(CancellationToken ct = default)
     {
         var folders = await _repository.GetAllAsync(ct);
-        return folders.Select(f => f.ToDto()).ToList();
+        return folders.Select(ToDto).ToList();
     }
 
     public async Task<FolderDto> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         var folder = await GetExistingAsync(id, ct);
-        return folder.ToDto();
+        return ToDto(folder);
     }
 
     public async Task<FolderDto> CreateAsync(CreateFolderDto dto, CancellationToken ct = default)
@@ -43,7 +43,7 @@ public class FolderService : IFolderService
         };
 
         var created = await _repository.AddAsync(folder, ct);
-        return created.ToDto();
+        return ToDto(created);
     }
 
     public async Task<FolderDto> UpdateAsync(Guid id, UpdateFolderDto dto, CancellationToken ct = default)
@@ -56,7 +56,7 @@ public class FolderService : IFolderService
         folder.Description = dto.Description;
 
         await _repository.UpdateAsync(folder, ct);
-        return folder.ToDto();
+        return ToDto(folder);
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
@@ -72,7 +72,7 @@ public class FolderService : IFolderService
     public async Task<IReadOnlyList<DocumentDto>> GetDocumentsAsync(Guid id, CancellationToken ct = default)
     {
         var folder = await GetExistingAsync(id, ct);
-        return folder.Documents.Select(d => d.ToDto()).ToList();
+        return folder.Documents.Select(DocumentToDto).ToList();
     }
 
     public async Task MoveDocumentAsync(Guid folderId, Guid documentId, CancellationToken ct = default)
@@ -100,5 +100,34 @@ public class FolderService : IFolderService
 
         if (name.Trim().Length > MaxNameLength)
             throw new InvalidFolderException($"Name must not exceed {MaxNameLength} characters.");
+    }
+
+    private static FolderDto ToDto(FolderEntity entity)
+    {
+        return new FolderDto
+        {
+            Id = entity.Id,
+            Name = entity.Name,
+            Description = entity.Description,
+            CreatedAt = entity.CreatedAt,
+            DocumentCount = entity.Documents.Count
+        };
+    }
+
+    private static DocumentDto DocumentToDto(DocumentEntity entity)
+    {
+        return new DocumentDto
+        {
+            Id = entity.Id,
+            Title = entity.Title,
+            FileName = entity.FileName,
+            ContentType = entity.ContentType,
+            FileSize = entity.FileSize,
+            Summary = entity.Summary,
+            Status = entity.Status,
+            UploadedAt = entity.UploadedAt,
+            UpdatedAt = entity.UpdatedAt,
+            FolderId = entity.FolderId
+        };
     }
 }

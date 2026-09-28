@@ -34,7 +34,7 @@ public class DocumentServiceTests
     [Fact]
     public async Task CreateAsync_ValidInput_SavesDocumentWithUploadedStatus()
     {
-        var result = await _service.CreateAsync("  Invoice  ", "invoice.pdf", "application/pdf", 1024, null);
+        var result = await _service.CreateAsync(new CreateDocumentCommand("  Invoice  ", "invoice.pdf", "application/pdf", 1024, null));
 
         Assert.NotEqual(Guid.Empty, result.Id);
         Assert.Equal("Invoice", result.Title);
@@ -48,7 +48,7 @@ public class DocumentServiceTests
     public async Task CreateAsync_EmptyTitle_ThrowsAndDoesNotSave()
     {
         await Assert.ThrowsAsync<InvalidDocumentException>(
-            () => _service.CreateAsync("   ", "invoice.pdf", "application/pdf", 1024, null));
+            () => _service.CreateAsync(new CreateDocumentCommand("   ", "invoice.pdf", "application/pdf", 1024, null)));
 
         await _repository.DidNotReceive().AddAsync(Arg.Any<DocumentEntity>(), Arg.Any<CancellationToken>());
     }

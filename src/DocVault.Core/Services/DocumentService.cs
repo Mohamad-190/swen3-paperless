@@ -19,45 +19,39 @@ public class DocumentService : IDocumentService
     public async Task<IReadOnlyList<DocumentDto>> GetAllAsync(CancellationToken ct = default)
     {
         var documents = await _repository.GetAllAsync(ct);
-        return documents.Select(d => d.ToDto()).ToList();
+        return documents.Select(ToDto).ToList();
     }
 
     public async Task<DocumentDto> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         var document = await GetExistingAsync(id, ct);
-        return document.ToDto();
+        return ToDto(document);
     }
 
-    public async Task<DocumentDto> CreateAsync(
-        string title,
-        string fileName,
-        string contentType,
-        long fileSize,
-        Guid? folderId,
-        CancellationToken ct = default)
+    public async Task<DocumentDto> CreateAsync(CreateDocumentCommand command, CancellationToken ct = default)
     {
-        ValidateTitle(title);
+        ValidateTitle(command.Title);
 
-        if (string.IsNullOrWhiteSpace(fileName))
+        if (string.IsNullOrWhiteSpace(command.FileName))
             throw new InvalidDocumentException("File name must not be empty.");
 
-        if (fileSize <= 0)
+        if (command.FileSize <= 0)
             throw new InvalidDocumentException("File must not be empty.");
 
         var document = new DocumentEntity
         {
             Id = Guid.NewGuid(),
-            Title = title.Trim(),
-            FileName = fileName,
-            ContentType = contentType,
-            FileSize = fileSize,
+            Title = command.Title.Trim(),
+            FileName = command.FileName,
+            ContentType = command.ContentType,
+            FileSize = command.FileSize,
             Status = DocumentStatus.Uploaded,
             UploadedAt = DateTime.UtcNow,
-            FolderId = folderId
+            FolderId = command.FolderId
         };
 
         var created = await _repository.AddAsync(document, ct);
-        return created.ToDto();
+        return ToDto(created);
     }
 
     public async Task<DocumentDto> UpdateAsync(Guid id, UpdateDocumentDto dto, CancellationToken ct = default)
@@ -71,7 +65,7 @@ public class DocumentService : IDocumentService
         document.UpdatedAt = DateTime.UtcNow;
 
         await _repository.UpdateAsync(document, ct);
-        return document.ToDto();
+        return ToDto(document);
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
@@ -93,5 +87,22 @@ public class DocumentService : IDocumentService
 
         if (title.Trim().Length > MaxTitleLength)
             throw new InvalidDocumentException($"Title must not exceed {MaxTitleLength} characters.");
+    }
+
+    private static DocumentDto ToDto(DocumentEntity entity)
+    {
+        return new DocumentDto
+        {
+            Id = entity.Id,
+            Title = entity.Title,
+            FileName = entity.FileName,
+            ContentType = entity.ContentType,
+            FileSize = entity.FileSize,
+            Summary = entity.Summary,
+            Status = entity.Status,
+            UploadedAt = entity.UploadedAt,
+            UpdatedAt = entity.UpdatedAt,
+            FolderId = entity.FolderId
+        };
     }
 }

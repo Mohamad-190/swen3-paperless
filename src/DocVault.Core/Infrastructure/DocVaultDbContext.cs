@@ -11,20 +11,19 @@ public class DocVaultDbContext : DbContext
 
     public DbSet<DocumentEntity> Documents => Set<DocumentEntity>();
     public DbSet<FolderEntity> Folders => Set<FolderEntity>();
+    public DbSet<TagEntity> Tags => Set<TagEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        // Generische Regel: Standard-Löschverhalten auf Restrict statt Cascade
+        // Generische Regel: Standard-Loeschverhalten auf Restrict statt Cascade
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
             foreach (var key in entityType.GetForeignKeys())
                 key.DeleteBehavior = DeleteBehavior.Restrict;
         }
 
-        // Hier tragen Salama und Dashaev ihre eigenen Beziehungen/Konfigurationen ein,
-        // z. B. Folder -> Documents, Enum-Konvertierungen etc.
 
         modelBuilder.Entity<DocumentEntity>(entity =>
         {
@@ -45,6 +44,18 @@ public class DocVaultDbContext : DbContext
                 .WithOne(d => d.Folder)
                 .HasForeignKey(d => d.FolderId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<TagEntity>(entity =>
+        {
+            entity.HasKey(t => t.Id);
+            entity.Property(t => t.Name).IsRequired().HasMaxLength(50);
+            entity.Property(t => t.Color).HasMaxLength(20);
+            entity.HasIndex(t => t.Name).IsUnique();
+
+            entity.HasMany(t => t.Documents)
+                .WithMany(d => d.Tags)
+                .UsingEntity(j => j.ToTable("DocumentTags"));
         });
     }
 }

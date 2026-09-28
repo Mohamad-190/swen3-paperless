@@ -8,13 +8,7 @@ public interface IDocumentService
 
     Task<DocumentDto> GetByIdAsync(Guid id, CancellationToken ct = default);
 
-    Task<DocumentDto> CreateAsync(
-        string title,
-        string fileName,
-        string contentType,
-        long fileSize,
-        Guid? folderId,
-        CancellationToken ct = default);
+    Task<DocumentDto> CreateAsync(CreateDocumentCommand command, CancellationToken ct = default);
 
     Task<DocumentDto> UpdateAsync(Guid id, UpdateDocumentDto dto, CancellationToken ct = default);
 

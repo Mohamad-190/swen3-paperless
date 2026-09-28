@@ -48,13 +48,14 @@ public class DocumentController : ControllerBase
     {
         try
         {
-            var created = await _documentService.CreateAsync(
+            var command = new CreateDocumentCommand(
                 request.Title,
                 request.File.FileName,
                 request.File.ContentType,
                 request.File.Length,
-                request.FolderId,
-                ct);
+                request.FolderId);
+
+            var created = await _documentService.CreateAsync(command, ct);
 
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }

@@ -23,4 +23,6 @@ public class DocumentEntity
     public Guid? FolderId { get; set; }
 
     public FolderEntity? Folder { get; set; }
+
+    public ICollection<TagEntity> Tags { get; set; } = new List<TagEntity>();
 }
