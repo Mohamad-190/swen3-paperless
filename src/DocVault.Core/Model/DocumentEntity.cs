@@ -21,4 +21,6 @@ public class DocumentEntity
     public DateTime? UpdatedAt { get; set; }
 
     public Guid? FolderId { get; set; }
+
+    public FolderEntity? Folder { get; set; }
 }

@@ -3,6 +3,7 @@ using System;
 using DocVault.Core.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DocVault.Core.Migrations
 {
     [DbContext(typeof(DocVaultDbContext))]
-    partial class DocVaultDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260928193547_AddFolders")]
+    partial class AddFolders
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
