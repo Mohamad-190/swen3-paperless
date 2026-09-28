@@ -1,3 +1,4 @@
+using DocVault.Core.Model;
 using Microsoft.EntityFrameworkCore;
 
 namespace DocVault.Core.Infrastructure;
@@ -8,7 +9,7 @@ public class DocVaultDbContext : DbContext
     {
     }
 
-    // Salama: public DbSet<DocumentEntity> Documents => Set<DocumentEntity>();
+    public DbSet<DocumentEntity> Documents => Set<DocumentEntity>();
     // Dashaev: public DbSet<FolderEntity> Folders => Set<FolderEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -24,5 +25,15 @@ public class DocVaultDbContext : DbContext
 
         // Hier tragen Salama und Dashaev ihre eigenen Beziehungen/Konfigurationen ein,
         // z. B. Folder -> Documents, Enum-Konvertierungen etc.
+
+        modelBuilder.Entity<DocumentEntity>(entity =>
+        {
+            entity.HasKey(d => d.Id);
+            entity.Property(d => d.Title).IsRequired().HasMaxLength(200);
+            entity.Property(d => d.FileName).IsRequired().HasMaxLength(255);
+            entity.Property(d => d.ContentType).IsRequired().HasMaxLength(100);
+            entity.Property(d => d.Status).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(d => d.FolderId);
+        });
     }
 }
