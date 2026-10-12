@@ -4,9 +4,61 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DocVault</title>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <h1>DocVault</h1>
-    <p>Paperless-Frontend wird hier ausgeliefert.</p>
+    <h1><a href="/">DocVault</a></h1>
+
+    <section>
+        <h2>Neuer Ordner</h2>
+        <form id="folderForm">
+            <input type="text" id="folderName" placeholder="Name" required>
+            <input type="text" id="folderDescription" placeholder="Beschreibung (optional)">
+            <button type="submit">Anlegen</button>
+        </form>
+        <p id="folderError" class="error"></p>
+    </section>
+
+    <section>
+        <h2>Ordner</h2>
+        <table>
+            <thead>
+                <tr><th>Name</th><th>Beschreibung</th><th>Dokumente</th></tr>
+            </thead>
+            <tbody id="folderList"></tbody>
+        </table>
+        <p id="folderEmpty" class="empty" hidden>Keine Ordner vorhanden.</p>
+    </section>
+
+    <section>
+        <h2>Dokument hochladen</h2>
+        <form id="uploadForm">
+            <input type="file" id="uploadFile" required>
+            <input type="text" id="uploadTitle" placeholder="Titel" required>
+            <select id="uploadFolder">
+                <option value="">Kein Ordner</option>
+            </select>
+            <button type="submit">Hochladen</button>
+        </form>
+        <p id="uploadError" class="error"></p>
+    </section>
+
+    <section>
+        <h2>Suche</h2>
+        <input type="search" id="searchInput" placeholder="Dokumente nach Titel durchsuchen...">
+    </section>
+
+    <section>
+        <h2>Dokumente</h2>
+        <table>
+            <thead>
+                <tr><th>Titel</th><th>Dateiname</th><th>Status</th><th>Hochgeladen</th></tr>
+            </thead>
+            <tbody id="documentList"></tbody>
+        </table>
+        <p id="documentEmpty" class="empty" hidden>Keine Dokumente vorhanden.</p>
+    </section>
+
+    <script type="module" src="js/dashboard.js"></script>
 </body>
 </html>
