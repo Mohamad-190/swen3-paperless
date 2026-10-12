@@ -27,5 +27,14 @@ services:
       db:
         condition: service_healthy
 
+  ui:
+    build:
+      context: .
+      dockerfile: src/DocVault.UI/Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - webapi
+
 volumes:
   pgdata:
