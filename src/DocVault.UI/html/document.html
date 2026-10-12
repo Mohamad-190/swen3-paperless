@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocVault - Dokument</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <h1><a href="/">DocVault</a></h1>
+    <p><a href="/">&larr; Zurueck zum Dashboard</a></p>
+
+    <section id="notFound" hidden>
+        <p>Dokument nicht gefunden.</p>
+    </section>
+
+    <section id="documentDetail" hidden>
+        <h2 id="docTitle"></h2>
+        <dl>
+            <dt>Dateiname</dt><dd id="docFileName"></dd>
+            <dt>Status</dt><dd id="docStatus"></dd>
+            <dt>Hochgeladen</dt><dd id="docUploadedAt"></dd>
+        </dl>
+
+        <h3>Titel bearbeiten</h3>
+        <form id="editForm">
+            <input type="text" id="editTitle" required>
+            <select id="editFolder">
+                <option value="">Kein Ordner</option>
+            </select>
+            <button type="submit">Speichern</button>
+        </form>
+        <p id="editError" class="error"></p>
+
+        <h3>Loeschen</h3>
+        <button id="deleteButton">Dokument loeschen</button>
+        <p id="deleteError" class="error"></p>
+    </section>
+
+    <script type="module" src="js/document-detail.js"></script>
+</body>
+</html>
