@@ -2,6 +2,7 @@ using DocVault.Core.Dtos;
 using DocVault.Core.Exceptions;
 using DocVault.Core.Infrastructure.Repositories;
 using DocVault.Core.Model;
+using DocVault.Core.ServiceAgents;
 using DocVault.Core.Services;
 using NSubstitute;
 
@@ -10,11 +11,12 @@ namespace DocVault.Tests.Services;
 public class DocumentServiceTests
 {
     private readonly IDocumentRepository _repository = Substitute.For<IDocumentRepository>();
+    private readonly IDocumentQueuePublisher _queuePublisher = Substitute.For<IDocumentQueuePublisher>();
     private readonly DocumentService _service;
 
     public DocumentServiceTests()
     {
-        _service = new DocumentService(_repository);
+        _service = new DocumentService(_repository, _queuePublisher);
 
         _repository.AddAsync(Arg.Any<DocumentEntity>(), Arg.Any<CancellationToken>())
             .Returns(call => call.Arg<DocumentEntity>());
@@ -51,6 +53,42 @@ public class DocumentServiceTests
             () => _service.CreateAsync(new CreateDocumentCommand("   ", "invoice.pdf", "application/pdf", 1024, null)));
 
         await _repository.DidNotReceive().AddAsync(Arg.Any<DocumentEntity>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_ValidInput_PublishesUploadedMessage()
+    {
+        var result = await _service.CreateAsync(new CreateDocumentCommand("Invoice", "invoice.pdf", "application/pdf", 1024, null));
+
+        await _queuePublisher.Received(1).PublishDocumentUploadedAsync(
+            Arg.Is<DocumentUploadedMessage>(m =>
+                m.DocumentId == result.Id &&
+                m.FileName == "invoice.pdf" &&
+                m.ContentType == "application/pdf"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_InvalidInput_DoesNotPublish()
+    {
+        await Assert.ThrowsAsync<InvalidDocumentException>(
+            () => _service.CreateAsync(new CreateDocumentCommand("   ", "invoice.pdf", "application/pdf", 1024, null)));
+
+        await _queuePublisher.DidNotReceive().PublishDocumentUploadedAsync(
+            Arg.Any<DocumentUploadedMessage>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_SaveFails_DoesNotPublish()
+    {
+        _repository.AddAsync(Arg.Any<DocumentEntity>(), Arg.Any<CancellationToken>())
+            .Returns<DocumentEntity>(_ => throw new InvalidOperationException("db down"));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.CreateAsync(new CreateDocumentCommand("Invoice", "invoice.pdf", "application/pdf", 1024, null)));
+
+        await _queuePublisher.DidNotReceive().PublishDocumentUploadedAsync(
+            Arg.Any<DocumentUploadedMessage>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

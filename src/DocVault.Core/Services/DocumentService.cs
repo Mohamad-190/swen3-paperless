@@ -2,6 +2,7 @@ using DocVault.Core.Dtos;
 using DocVault.Core.Exceptions;
 using DocVault.Core.Infrastructure.Repositories;
 using DocVault.Core.Model;
+using DocVault.Core.ServiceAgents;
 
 namespace DocVault.Core.Services;
 
@@ -18,10 +19,12 @@ public class DocumentService : IDocumentService
     };
 
     private readonly IDocumentRepository _repository;
+    private readonly IDocumentQueuePublisher _queuePublisher;
 
-    public DocumentService(IDocumentRepository repository)
+    public DocumentService(IDocumentRepository repository, IDocumentQueuePublisher queuePublisher)
     {
         _repository = repository;
+        _queuePublisher = queuePublisher;
     }
 
     public async Task<IReadOnlyList<DocumentDto>> GetAllAsync(CancellationToken ct = default)
@@ -66,6 +69,11 @@ public class DocumentService : IDocumentService
         };
 
         var created = await _repository.AddAsync(document, ct);
+
+        // Erst nach dem Speichern publishen, damit der Worker das Dokument in der DB findet.
+        await _queuePublisher.PublishDocumentUploadedAsync(
+            new DocumentUploadedMessage(created.Id, created.FileName, created.ContentType, created.UploadedAt), ct);
+
         return ToDto(created);
     }
 
