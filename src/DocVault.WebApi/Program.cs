@@ -1,5 +1,7 @@
 using DocVault.Core.Infrastructure;
+using DocVault.Core.Infrastructure.Messaging;
 using DocVault.Core.Infrastructure.Repositories;
+using DocVault.Core.ServiceAgents;
 using DocVault.Core.Services;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +23,10 @@ builder.Services.AddScoped<IFolderRepository, FolderRepository>();
 builder.Services.AddScoped<IFolderService, FolderService>();
 builder.Services.AddScoped<ITagRepository, TagRepository>();
 builder.Services.AddScoped<ITagService, TagService>();
+
+// RabbitMQ: Singleton, damit die Verbindung zum Broker wiederverwendet wird
+builder.Services.Configure<RabbitMqOptions>(builder.Configuration.GetSection(RabbitMqOptions.SectionName));
+builder.Services.AddSingleton<IDocumentQueuePublisher, RabbitMqDocumentPublisher>();
 
 var app = builder.Build();
 
