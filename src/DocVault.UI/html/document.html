@@ -3,39 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DocVault - Dokument</title>
+    <title>Dokument – DocVault</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <h1><a href="/">DocVault</a></h1>
-    <p><a href="/">&larr; Zurueck zum Dashboard</a></p>
+    <header class="topbar">
+        <div class="topbar-inner">
+            <a href="/" class="wordmark">DocVault</a>
+        </div>
+    </header>
 
-    <section id="notFound" hidden>
-        <p>Dokument nicht gefunden.</p>
-    </section>
+    <main class="page page-narrow">
+        <a href="/" class="back-link">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5"/><path d="m11 18-6-6 6-6"/></svg>
+            Alle Dokumente
+        </a>
 
-    <section id="documentDetail" hidden>
-        <h2 id="docTitle"></h2>
-        <dl>
-            <dt>Dateiname</dt><dd id="docFileName"></dd>
-            <dt>Status</dt><dd id="docStatus"></dd>
-            <dt>Hochgeladen</dt><dd id="docUploadedAt"></dd>
-        </dl>
+        <div id="loading" aria-label="Wird geladen">
+            <span class="skeleton" style="height: 36px; width: 60%; margin-bottom: 24px"></span>
+            <span class="skeleton" style="width: 90%; margin-bottom: 12px"></span>
+            <span class="skeleton" style="width: 75%"></span>
+        </div>
 
-        <h3>Titel bearbeiten</h3>
-        <form id="editForm">
-            <input type="text" id="editTitle" required>
-            <select id="editFolder">
-                <option value="">Kein Ordner</option>
-            </select>
-            <button type="submit">Speichern</button>
-        </form>
-        <p id="editError" class="error"></p>
+        <section id="notFound" class="panel empty" hidden>
+            <strong>Dieses Dokument gibt es nicht.</strong>
+            Vielleicht wurde es gelöscht oder der Link ist unvollständig.
+            <div><a href="/" class="btn btn-quiet">Zur Übersicht</a></div>
+        </section>
 
-        <h3>Loeschen</h3>
-        <button id="deleteButton">Dokument loeschen</button>
-        <p id="deleteError" class="error"></p>
-    </section>
+        <section id="loadError" class="panel empty" hidden>
+            <strong>Das Dokument konnte nicht geladen werden.</strong>
+            <span id="loadErrorText"></span>
+            <div><button type="button" class="btn btn-quiet" id="retryButton">Erneut versuchen</button></div>
+        </section>
+
+        <article id="documentDetail" class="detail" hidden>
+            <div>
+                <div class="detail-head">
+                    <h1 id="docTitle"></h1>
+                    <span id="docStatus"></span>
+                </div>
+            </div>
+
+            <dl class="meta-grid">
+                <div><dt>Dateiname</dt><dd id="docFileName"></dd></div>
+                <div><dt>Typ</dt><dd id="docType"></dd></div>
+                <div><dt>Größe</dt><dd id="docSize"></dd></div>
+                <div><dt>Ordner</dt><dd id="docFolder"></dd></div>
+                <div><dt>Hochgeladen</dt><dd id="docUploadedAt"></dd></div>
+                <div><dt>Zuletzt geändert</dt><dd id="docUpdatedAt"></dd></div>
+            </dl>
+
+            <section class="panel" aria-labelledby="summaryHeading">
+                <h2 id="summaryHeading">Zusammenfassung</h2>
+                <p class="summary-text" id="docSummary"></p>
+            </section>
+
+            <section class="panel" aria-labelledby="editHeading">
+                <h2 id="editHeading">Bearbeiten</h2>
+                <form id="editForm" novalidate>
+                    <div class="edit-fields">
+                        <div class="field">
+                            <label for="editTitle">Titel</label>
+                            <input type="text" id="editTitle" maxlength="200">
+                        </div>
+                        <div class="field">
+                            <label for="editFolder">Ordner</label>
+                            <select id="editFolder">
+                                <option value="">Kein Ordner</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="saveButton">Änderungen speichern</button>
+                    </div>
+                    <p class="form-message" id="editMessage" role="status" aria-live="polite"></p>
+                </form>
+            </section>
+
+            <section class="panel danger-zone" aria-labelledby="deleteHeading">
+                <h2 id="deleteHeading">Dokument löschen</h2>
+                <p>Das Dokument wird endgültig entfernt und lässt sich nicht wiederherstellen.</p>
+                <div id="deleteStart">
+                    <button type="button" class="btn btn-quiet" id="deleteButton">Löschen …</button>
+                </div>
+                <div id="deleteConfirm" class="confirm-row" hidden>
+                    <span>Wirklich löschen?</span>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteButton">Endgültig löschen</button>
+                    <button type="button" class="btn btn-quiet" id="cancelDeleteButton">Abbrechen</button>
+                </div>
+                <p class="form-message" id="deleteMessage" role="status" aria-live="polite"></p>
+            </section>
+        </article>
+    </main>
 
     <script type="module" src="js/document-detail.js"></script>
 </body>

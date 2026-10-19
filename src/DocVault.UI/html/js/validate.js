@@ -18,13 +18,13 @@ export const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
 
 export function validateFile(file) {
     if (!file) {
-        return "Bitte eine Datei auswaehlen.";
+        return "Bitte zuerst eine Datei auswählen.";
     }
     if (file.size === 0) {
         return "Die Datei ist leer.";
     }
     if (file.size > MAX_FILE_SIZE_BYTES) {
-        return `Die Datei darf maximal ${MAX_FILE_SIZE_BYTES / (1024 * 1024)} MB gross sein.`;
+        return `Die Datei darf maximal ${MAX_FILE_SIZE_BYTES / (1024 * 1024)} MB groß sein.`;
     }
     if (!ALLOWED_CONTENT_TYPES.includes(file.type)) {
         return "Nur PDF-, PNG- und JPEG-Dateien sind erlaubt.";

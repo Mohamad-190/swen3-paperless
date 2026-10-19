@@ -4,60 +4,105 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DocVault</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <h1><a href="/">DocVault</a></h1>
+    <header class="topbar">
+        <div class="topbar-inner">
+            <a href="/" class="wordmark">DocVault</a>
+        </div>
+    </header>
 
-    <section>
-        <h2>Neuer Ordner</h2>
-        <form id="folderForm">
-            <input type="text" id="folderName" placeholder="Name" required>
-            <input type="text" id="folderDescription" placeholder="Beschreibung (optional)">
-            <button type="submit">Anlegen</button>
-        </form>
-        <p id="folderError" class="error"></p>
-    </section>
+    <main class="page">
+        <div class="page-head">
+            <h1>Dokumente</h1>
+            <p class="page-sub" id="documentCount"></p>
+        </div>
 
-    <section>
-        <h2>Ordner</h2>
-        <table>
-            <thead>
-                <tr><th>Name</th><th>Beschreibung</th><th>Dokumente</th></tr>
-            </thead>
-            <tbody id="folderList"></tbody>
-        </table>
-        <p id="folderEmpty" class="empty" hidden>Keine Ordner vorhanden.</p>
-    </section>
+        <div class="layout">
+            <aside class="side-col" aria-labelledby="foldersHeading">
+                <nav>
+                    <h2 id="foldersHeading">Ordner</h2>
+                    <ul class="folder-list" id="folderList"></ul>
+                </nav>
 
-    <section>
-        <h2>Dokument hochladen</h2>
-        <form id="uploadForm">
-            <input type="file" id="uploadFile" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" required>
-            <input type="text" id="uploadTitle" placeholder="Titel" required>
-            <select id="uploadFolder">
-                <option value="">Kein Ordner</option>
-            </select>
-            <button type="submit">Hochladen</button>
-        </form>
-        <p id="uploadError" class="error"></p>
-    </section>
+                <form id="folderForm" class="folder-form" novalidate>
+                    <h2>Neuer Ordner</h2>
+                    <label for="folderName" class="visually-hidden">Name des Ordners</label>
+                    <input type="text" id="folderName" maxlength="100" placeholder="Name">
+                    <label for="folderDescription" class="visually-hidden">Beschreibung</label>
+                    <input type="text" id="folderDescription" maxlength="500" placeholder="Beschreibung (optional)">
+                    <button type="submit" class="btn btn-secondary" id="folderButton">Ordner anlegen</button>
+                    <p class="form-message" id="folderMessage" role="status" aria-live="polite"></p>
+                </form>
+            </aside>
 
-    <section>
-        <h2>Suche</h2>
-        <input type="search" id="searchInput" placeholder="Dokumente nach Titel durchsuchen...">
-    </section>
+            <div class="main-col">
+                <section class="panel" aria-labelledby="uploadHeading">
+                    <h2 id="uploadHeading">Dokument hochladen</h2>
+                    <form id="uploadForm" novalidate>
+                        <label class="dropzone" id="dropzone" for="uploadFile">
+                            <input type="file" id="uploadFile" class="visually-hidden"
+                                   accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg">
+                            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 15V4"/><path d="m7 9 5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
+                            </svg>
+                            <span class="dropzone-text" id="dropzoneText">Datei hierher ziehen oder auswählen</span>
+                            <span class="dropzone-hint" id="dropzoneHint">PDF, PNG oder JPEG, höchstens 20 MB</span>
+                        </label>
 
-    <section>
-        <h2>Dokumente</h2>
-        <table>
-            <thead>
-                <tr><th>Titel</th><th>Dateiname</th><th>Status</th><th>Hochgeladen</th></tr>
-            </thead>
-            <tbody id="documentList"></tbody>
-        </table>
-        <p id="documentEmpty" class="empty" hidden>Keine Dokumente vorhanden.</p>
-    </section>
+                        <div class="upload-fields">
+                            <div class="field">
+                                <label for="uploadTitle">Titel</label>
+                                <input type="text" id="uploadTitle" maxlength="200" placeholder="z. B. Mietvertrag Wohnung">
+                            </div>
+                            <div class="field">
+                                <label for="uploadFolder">Ordner</label>
+                                <select id="uploadFolder">
+                                    <option value="">Kein Ordner</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary" id="uploadButton">Hochladen</button>
+                        </div>
+                        <p class="form-message" id="uploadMessage" role="status" aria-live="polite"></p>
+                    </form>
+                </section>
+
+                <section aria-labelledby="documentsHeading">
+                    <div class="section-head">
+                        <h2 id="documentsHeading">Alle Dokumente</h2>
+                        <div class="search">
+                            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.4-4.4"/>
+                            </svg>
+                            <label for="searchInput" class="visually-hidden">Dokumente durchsuchen</label>
+                            <input type="search" id="searchInput" placeholder="Titel oder Dateiname suchen">
+                        </div>
+                    </div>
+
+                    <div class="table-wrap">
+                        <table class="doc-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Titel</th>
+                                    <th scope="col">Ordner</th>
+                                    <th scope="col">Typ</th>
+                                    <th scope="col" class="num">Größe</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col">Hochgeladen</th>
+                                </tr>
+                            </thead>
+                            <tbody id="documentList"></tbody>
+                        </table>
+                        <div class="empty" id="documentEmpty" hidden></div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
 
     <script type="module" src="js/dashboard.js"></script>
 </body>
