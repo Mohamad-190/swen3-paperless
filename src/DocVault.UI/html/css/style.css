@@ -33,6 +33,11 @@ html {
     -webkit-text-size-adjust: 100%;
 }
 
+/* hidden muss gewinnen, auch gegen display: flex/grid aus Klassen */
+[hidden] {
+    display: none !important;
+}
+
 body {
     margin: 0;
     background: var(--bg);
