@@ -8,6 +8,14 @@ namespace DocVault.Core.Services;
 public class DocumentService : IDocumentService
 {
     private const int MaxTitleLength = 200;
+    private const long MaxFileSizeBytes = 20 * 1024 * 1024; // 20 MB
+
+    private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "application/pdf",
+        "image/png",
+        "image/jpeg"
+    };
 
     private readonly IDocumentRepository _repository;
 
@@ -37,6 +45,13 @@ public class DocumentService : IDocumentService
 
         if (command.FileSize <= 0)
             throw new InvalidDocumentException("File must not be empty.");
+
+        if (command.FileSize > MaxFileSizeBytes)
+            throw new InvalidDocumentException($"File must not exceed {MaxFileSizeBytes / (1024 * 1024)} MB.");
+
+        if (!AllowedContentTypes.Contains(command.ContentType))
+            throw new InvalidDocumentException(
+                $"File type '{command.ContentType}' is not allowed. Allowed types: {string.Join(", ", AllowedContentTypes)}.");
 
         var document = new DocumentEntity
         {

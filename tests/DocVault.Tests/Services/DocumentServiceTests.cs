@@ -54,6 +54,26 @@ public class DocumentServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_DisallowedContentType_ThrowsAndDoesNotSave()
+    {
+        await Assert.ThrowsAsync<InvalidDocumentException>(
+            () => _service.CreateAsync(new CreateDocumentCommand("Invoice", "invoice.exe", "application/x-msdownload", 1024, null)));
+
+        await _repository.DidNotReceive().AddAsync(Arg.Any<DocumentEntity>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_FileTooLarge_ThrowsAndDoesNotSave()
+    {
+        const long tooLarge = 21L * 1024 * 1024;
+
+        await Assert.ThrowsAsync<InvalidDocumentException>(
+            () => _service.CreateAsync(new CreateDocumentCommand("Invoice", "invoice.pdf", "application/pdf", tooLarge, null)));
+
+        await _repository.DidNotReceive().AddAsync(Arg.Any<DocumentEntity>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task GetByIdAsync_UnknownId_ThrowsNotFound()
     {
         var id = Guid.NewGuid();
