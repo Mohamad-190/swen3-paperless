@@ -12,12 +12,22 @@ export function validateRequired(value, fieldName, maxLength) {
     return null;
 }
 
+// Muss mit DocumentService.AllowedContentTypes / MaxFileSizeBytes im Backend uebereinstimmen.
+export const ALLOWED_CONTENT_TYPES = ["application/pdf", "image/png", "image/jpeg"];
+export const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
+
 export function validateFile(file) {
     if (!file) {
         return "Bitte eine Datei auswaehlen.";
     }
     if (file.size === 0) {
         return "Die Datei ist leer.";
+    }
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+        return `Die Datei darf maximal ${MAX_FILE_SIZE_BYTES / (1024 * 1024)} MB gross sein.`;
+    }
+    if (!ALLOWED_CONTENT_TYPES.includes(file.type)) {
+        return "Nur PDF-, PNG- und JPEG-Dateien sind erlaubt.";
     }
     return null;
 }
