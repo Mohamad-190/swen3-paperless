@@ -1,6 +1,6 @@
 namespace DocVault.Core.Exceptions;
 
-public class InvalidFolderException : Exception
+public class InvalidFolderException : BusinessValidationException
 {
     public InvalidFolderException(string message) : base(message)
     {
