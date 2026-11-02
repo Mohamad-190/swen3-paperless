@@ -46,6 +46,19 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  ocr-worker:
+    build:
+      context: .
+      dockerfile: src/DocVault.OcrWorker/Dockerfile
+    environment:
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__UserName: ${RABBITMQ_USER}
+      RabbitMQ__Password: ${RABBITMQ_PASSWORD}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
   ui:
     build:
       context: .
