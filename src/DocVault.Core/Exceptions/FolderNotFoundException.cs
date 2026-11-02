@@ -1,6 +1,6 @@
 namespace DocVault.Core.Exceptions;
 
-public class FolderNotFoundException : Exception
+public class FolderNotFoundException : NotFoundException
 {
     public FolderNotFoundException(Guid id)
         : base($"Folder with id '{id}' was not found.")

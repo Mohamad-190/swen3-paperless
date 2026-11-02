@@ -71,8 +71,18 @@ public class DocumentService : IDocumentService
         var created = await _repository.AddAsync(document, ct);
 
         // Erst nach dem Speichern publishen, damit der Worker das Dokument in der DB findet.
-        await _queuePublisher.PublishDocumentUploadedAsync(
-            new DocumentUploadedMessage(created.Id, created.FileName, created.ContentType, created.UploadedAt), ct);
+        try
+        {
+            await _queuePublisher.PublishDocumentUploadedAsync(
+                new DocumentUploadedMessage(created.Id, created.FileName, created.ContentType, created.UploadedAt), ct);
+        }
+        catch (MessagingException)
+        {
+            // Dokument ist gespeichert, wird aber nie verarbeitet -> sichtbar als fehlgeschlagen markieren.
+            created.Status = DocumentStatus.Failed;
+            await _repository.UpdateAsync(created, ct);
+            throw;
+        }
 
         return ToDto(created);
     }

@@ -92,6 +92,19 @@ public class DocumentServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_PublishFails_MarksDocumentAsFailed()
+    {
+        _queuePublisher.PublishDocumentUploadedAsync(Arg.Any<DocumentUploadedMessage>(), Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new MessagingException("broker down", new IOException()));
+
+        await Assert.ThrowsAsync<MessagingException>(
+            () => _service.CreateAsync(new CreateDocumentCommand("Invoice", "invoice.pdf", "application/pdf", 1024, null)));
+
+        await _repository.Received(1).UpdateAsync(
+            Arg.Is<DocumentEntity>(d => d.Status == DocumentStatus.Failed), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task CreateAsync_DisallowedContentType_ThrowsAndDoesNotSave()
     {
         await Assert.ThrowsAsync<InvalidDocumentException>(

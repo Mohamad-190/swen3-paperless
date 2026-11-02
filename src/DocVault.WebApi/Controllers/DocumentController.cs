@@ -1,11 +1,11 @@
 using DocVault.Core.Dtos;
-using DocVault.Core.Exceptions;
 using DocVault.Core.Services;
 using DocVault.WebApi.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DocVault.WebApi.Controllers;
 
+// Fehler (404, 400, 503, ...) uebersetzt der GlobalExceptionHandler.
 [ApiController]
 [Route("documents")]
 public class DocumentController : ControllerBase
@@ -30,39 +30,26 @@ public class DocumentController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<DocumentDto>> GetById(Guid id, CancellationToken ct)
     {
-        try
-        {
-            return Ok(await _documentService.GetByIdAsync(id, ct));
-        }
-        catch (DocumentNotFoundException ex)
-        {
-            return NotFound(ex.Message);
-        }
+        return Ok(await _documentService.GetByIdAsync(id, ct));
     }
 
     [HttpPost]
     [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(DocumentDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<ActionResult<DocumentDto>> Upload([FromForm] UploadDocumentRequest request, CancellationToken ct)
     {
-        try
-        {
-            var command = new CreateDocumentCommand(
-                request.Title,
-                request.File.FileName,
-                request.File.ContentType,
-                request.File.Length,
-                request.FolderId);
+        var command = new CreateDocumentCommand(
+            request.Title,
+            request.File.FileName,
+            request.File.ContentType,
+            request.File.Length,
+            request.FolderId);
 
-            var created = await _documentService.CreateAsync(command, ct);
+        var created = await _documentService.CreateAsync(command, ct);
 
-            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
-        }
-        catch (InvalidDocumentException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
     [HttpPut("{id:guid}")]
@@ -71,18 +58,7 @@ public class DocumentController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<DocumentDto>> Update(Guid id, UpdateDocumentDto dto, CancellationToken ct)
     {
-        try
-        {
-            return Ok(await _documentService.UpdateAsync(id, dto, ct));
-        }
-        catch (DocumentNotFoundException ex)
-        {
-            return NotFound(ex.Message);
-        }
-        catch (InvalidDocumentException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        return Ok(await _documentService.UpdateAsync(id, dto, ct));
     }
 
     [HttpDelete("{id:guid}")]
@@ -90,14 +66,7 @@ public class DocumentController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
-        try
-        {
-            await _documentService.DeleteAsync(id, ct);
-            return NoContent();
-        }
-        catch (DocumentNotFoundException ex)
-        {
-            return NotFound(ex.Message);
-        }
+        await _documentService.DeleteAsync(id, ct);
+        return NoContent();
     }
 }

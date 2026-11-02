@@ -1,6 +1,6 @@
 namespace DocVault.Core.Exceptions;
 
-public class DocumentNotFoundException : Exception
+public class DocumentNotFoundException : NotFoundException
 {
     public DocumentNotFoundException(Guid id)
         : base($"Document with id '{id}' was not found.")

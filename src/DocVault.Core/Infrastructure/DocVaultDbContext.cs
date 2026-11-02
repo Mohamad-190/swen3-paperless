@@ -1,5 +1,7 @@
+using DocVault.Core.Exceptions;
 using DocVault.Core.Model;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace DocVault.Core.Infrastructure;
 
@@ -57,5 +59,23 @@ public class DocVaultDbContext : DbContext
                 .WithMany(d => d.Tags)
                 .UsingEntity(j => j.ToTable("DocumentTags"));
         });
+    }
+
+    // Alle Schreibzugriffe laufen hier durch: DB-Fehler werden in eine eigene Exception der
+    // Datenzugriffsschicht uebersetzt, statt EF-/Npgsql-Typen nach oben durchzureichen.
+    public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        }
+        catch (DbUpdateException ex)
+        {
+            throw new DataAccessException("Saving changes to the database failed.", ex);
+        }
+        catch (NpgsqlException ex)
+        {
+            throw new DataAccessException("The database is not reachable.", ex);
+        }
     }
 }

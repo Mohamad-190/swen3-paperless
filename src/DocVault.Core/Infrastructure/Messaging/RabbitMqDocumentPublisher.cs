@@ -1,8 +1,10 @@
 using System.Text.Json;
+using DocVault.Core.Exceptions;
 using DocVault.Core.ServiceAgents;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
+using RabbitMQ.Client.Exceptions;
 
 namespace DocVault.Core.Infrastructure.Messaging;
 
@@ -24,6 +26,19 @@ public sealed class RabbitMqDocumentPublisher : IDocumentQueuePublisher, IAsyncD
     }
 
     public async Task PublishDocumentUploadedAsync(DocumentUploadedMessage message, CancellationToken ct = default)
+    {
+        try
+        {
+            await PublishAsync(message, ct);
+        }
+        catch (Exception ex) when (ex is RabbitMQClientException or IOException or TimeoutException)
+        {
+            _logger.LogError(ex, "Could not publish document {DocumentId} to queue {Queue}", message.DocumentId, _options.QueueName);
+            throw new MessagingException("The message broker is not reachable.", ex);
+        }
+    }
+
+    private async Task PublishAsync(DocumentUploadedMessage message, CancellationToken ct)
     {
         var connection = await GetConnectionAsync(ct);
         await using var channel = await connection.CreateChannelAsync(cancellationToken: ct);

@@ -3,6 +3,7 @@ using DocVault.Core.Infrastructure.Messaging;
 using DocVault.Core.Infrastructure.Repositories;
 using DocVault.Core.ServiceAgents;
 using DocVault.Core.Services;
+using DocVault.WebApi.ExceptionHandling;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,6 +29,10 @@ builder.Services.AddScoped<ITagService, TagService>();
 builder.Services.Configure<RabbitMqOptions>(builder.Configuration.GetSection(RabbitMqOptions.SectionName));
 builder.Services.AddSingleton<IDocumentQueuePublisher, RabbitMqDocumentPublisher>();
 
+// Zentrale Fehlerbehandlung: Exceptions aller Schichten -> ProblemDetails mit passendem Statuscode
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -36,6 +41,7 @@ using (var scope = app.Services.CreateScope())
     db.Database.Migrate();
 }
 
+app.UseExceptionHandler();
 app.UseSwagger();
 app.UseSwaggerUI();
 app.MapControllers();
