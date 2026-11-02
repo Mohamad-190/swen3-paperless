@@ -4,6 +4,7 @@ using DocVault.Core.Infrastructure.Repositories;
 using DocVault.Core.Model;
 using DocVault.Core.ServiceAgents;
 using DocVault.Core.Services;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace DocVault.Tests.Services;
@@ -16,7 +17,7 @@ public class DocumentServiceTests
 
     public DocumentServiceTests()
     {
-        _service = new DocumentService(_repository, _queuePublisher);
+        _service = new DocumentService(_repository, _queuePublisher, NullLogger<DocumentService>.Instance);
 
         _repository.AddAsync(Arg.Any<DocumentEntity>(), Arg.Any<CancellationToken>())
             .Returns(call => call.Arg<DocumentEntity>());

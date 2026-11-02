@@ -3,6 +3,7 @@ using DocVault.Core.Exceptions;
 using DocVault.Core.Infrastructure.Repositories;
 using DocVault.Core.Model;
 using DocVault.Core.Services;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace DocVault.Tests.Services;
@@ -15,7 +16,7 @@ public class TagServiceTests
 
     public TagServiceTests()
     {
-        _service = new TagService(_repository, _documentRepository);
+        _service = new TagService(_repository, _documentRepository, NullLogger<TagService>.Instance);
 
         _repository.AddAsync(Arg.Any<TagEntity>(), Arg.Any<CancellationToken>())
             .Returns(call => call.Arg<TagEntity>());

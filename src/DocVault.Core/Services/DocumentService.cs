@@ -3,6 +3,7 @@ using DocVault.Core.Exceptions;
 using DocVault.Core.Infrastructure.Repositories;
 using DocVault.Core.Model;
 using DocVault.Core.ServiceAgents;
+using Microsoft.Extensions.Logging;
 
 namespace DocVault.Core.Services;
 
@@ -20,11 +21,13 @@ public class DocumentService : IDocumentService
 
     private readonly IDocumentRepository _repository;
     private readonly IDocumentQueuePublisher _queuePublisher;
+    private readonly ILogger<DocumentService> _logger;
 
-    public DocumentService(IDocumentRepository repository, IDocumentQueuePublisher queuePublisher)
+    public DocumentService(IDocumentRepository repository, IDocumentQueuePublisher queuePublisher, ILogger<DocumentService> logger)
     {
         _repository = repository;
         _queuePublisher = queuePublisher;
+        _logger = logger;
     }
 
     public async Task<IReadOnlyList<DocumentDto>> GetAllAsync(CancellationToken ct = default)
@@ -69,6 +72,8 @@ public class DocumentService : IDocumentService
         };
 
         var created = await _repository.AddAsync(document, ct);
+        _logger.LogInformation("Document {DocumentId} created ({FileName}, {FileSize} bytes)",
+            created.Id, created.FileName, created.FileSize);
 
         // Erst nach dem Speichern publishen, damit der Worker das Dokument in der DB findet.
         try
@@ -76,9 +81,11 @@ public class DocumentService : IDocumentService
             await _queuePublisher.PublishDocumentUploadedAsync(
                 new DocumentUploadedMessage(created.Id, created.FileName, created.ContentType, created.UploadedAt), ct);
         }
-        catch (MessagingException)
+        catch (MessagingException ex)
         {
             // Dokument ist gespeichert, wird aber nie verarbeitet -> sichtbar als fehlgeschlagen markieren.
+            _logger.LogError(ex, "Failed to queue document {DocumentId} for OCR processing, marking as Failed",
+                created.Id);
             created.Status = DocumentStatus.Failed;
             await _repository.UpdateAsync(created, ct);
             throw;
@@ -105,12 +112,18 @@ public class DocumentService : IDocumentService
     {
         var document = await GetExistingAsync(id, ct);
         await _repository.DeleteAsync(document, ct);
+        _logger.LogInformation("Document {DocumentId} deleted", id);
     }
 
     private async Task<DocumentEntity> GetExistingAsync(Guid id, CancellationToken ct)
     {
-        return await _repository.GetByIdAsync(id, ct)
-            ?? throw new DocumentNotFoundException(id);
+        var document = await _repository.GetByIdAsync(id, ct);
+        if (document is null)
+        {
+            _logger.LogWarning("Document {DocumentId} was requested but does not exist", id);
+            throw new DocumentNotFoundException(id);
+        }
+        return document;
     }
 
     private static void ValidateTitle(string? title)

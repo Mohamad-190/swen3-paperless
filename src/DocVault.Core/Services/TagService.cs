@@ -2,6 +2,7 @@ using DocVault.Core.Dtos;
 using DocVault.Core.Exceptions;
 using DocVault.Core.Infrastructure.Repositories;
 using DocVault.Core.Model;
+using Microsoft.Extensions.Logging;
 
 namespace DocVault.Core.Services;
 
@@ -11,11 +12,13 @@ public class TagService : ITagService
 
     private readonly ITagRepository _repository;
     private readonly IDocumentRepository _documentRepository;
+    private readonly ILogger<TagService> _logger;
 
-    public TagService(ITagRepository repository, IDocumentRepository documentRepository)
+    public TagService(ITagRepository repository, IDocumentRepository documentRepository, ILogger<TagService> logger)
     {
         _repository = repository;
         _documentRepository = documentRepository;
+        _logger = logger;
     }
 
     public async Task<IReadOnlyList<TagDto>> GetAllAsync(CancellationToken ct = default)
@@ -36,15 +39,21 @@ public class TagService : ITagService
         };
 
         var created = await _repository.AddAsync(tag, ct);
+        _logger.LogInformation("Tag {TagId} created ({Name})", created.Id, created.Name);
         return ToDto(created);
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
-        var tag = await _repository.GetByIdAsync(id, ct)
-            ?? throw new TagNotFoundException(id);
+        var tag = await _repository.GetByIdAsync(id, ct);
+        if (tag is null)
+        {
+            _logger.LogWarning("Tag {TagId} was requested but does not exist", id);
+            throw new TagNotFoundException(id);
+        }
 
         await _repository.DeleteAsync(tag, ct);
+        _logger.LogInformation("Tag {TagId} deleted", id);
     }
 
     public async Task AssignToDocumentAsync(Guid documentId, Guid tagId, CancellationToken ct = default)
@@ -60,6 +69,7 @@ public class TagService : ITagService
 
         document.Tags.Add(tag);
         await _documentRepository.UpdateAsync(document, ct);
+        _logger.LogInformation("Tag {TagId} assigned to document {DocumentId}", tagId, documentId);
     }
 
     public async Task RemoveFromDocumentAsync(Guid documentId, Guid tagId, CancellationToken ct = default)
