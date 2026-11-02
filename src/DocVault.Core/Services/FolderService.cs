@@ -2,6 +2,7 @@ using DocVault.Core.Dtos;
 using DocVault.Core.Exceptions;
 using DocVault.Core.Infrastructure.Repositories;
 using DocVault.Core.Model;
+using Microsoft.Extensions.Logging;
 
 namespace DocVault.Core.Services;
 
@@ -11,11 +12,13 @@ public class FolderService : IFolderService
 
     private readonly IFolderRepository _repository;
     private readonly IDocumentRepository _documentRepository;
+    private readonly ILogger<FolderService> _logger;
 
-    public FolderService(IFolderRepository repository, IDocumentRepository documentRepository)
+    public FolderService(IFolderRepository repository, IDocumentRepository documentRepository, ILogger<FolderService> logger)
     {
         _repository = repository;
         _documentRepository = documentRepository;
+        _logger = logger;
     }
 
     public async Task<IReadOnlyList<FolderDto>> GetAllAsync(CancellationToken ct = default)
@@ -43,6 +46,7 @@ public class FolderService : IFolderService
         };
 
         var created = await _repository.AddAsync(folder, ct);
+        _logger.LogInformation("Folder {FolderId} created ({Name})", created.Id, created.Name);
         return ToDto(created);
     }
 
@@ -64,9 +68,14 @@ public class FolderService : IFolderService
         var folder = await GetExistingAsync(id, ct);
 
         if (folder.Documents.Count > 0)
+        {
+            _logger.LogWarning("Deletion of folder {FolderId} blocked: still contains {DocumentCount} document(s)",
+                id, folder.Documents.Count);
             throw new InvalidFolderException("Folder must be empty before it can be deleted.");
+        }
 
         await _repository.DeleteAsync(folder, ct);
+        _logger.LogInformation("Folder {FolderId} deleted", id);
     }
 
     public async Task<IReadOnlyList<DocumentDto>> GetDocumentsAsync(Guid id, CancellationToken ct = default)
@@ -89,8 +98,13 @@ public class FolderService : IFolderService
 
     private async Task<FolderEntity> GetExistingAsync(Guid id, CancellationToken ct)
     {
-        return await _repository.GetByIdAsync(id, ct)
-            ?? throw new FolderNotFoundException(id);
+        var folder = await _repository.GetByIdAsync(id, ct);
+        if (folder is null)
+        {
+            _logger.LogWarning("Folder {FolderId} was requested but does not exist", id);
+            throw new FolderNotFoundException(id);
+        }
+        return folder;
     }
 
     private static void ValidateName(string? name)

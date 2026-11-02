@@ -3,6 +3,7 @@ using DocVault.Core.Exceptions;
 using DocVault.Core.Infrastructure.Repositories;
 using DocVault.Core.Model;
 using DocVault.Core.Services;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace DocVault.Tests.Services;
@@ -15,7 +16,7 @@ public class FolderServiceTests
 
     public FolderServiceTests()
     {
-        _service = new FolderService(_repository, _documentRepository);
+        _service = new FolderService(_repository, _documentRepository, NullLogger<FolderService>.Instance);
 
         _repository.AddAsync(Arg.Any<FolderEntity>(), Arg.Any<CancellationToken>())
             .Returns(call => call.Arg<FolderEntity>());
