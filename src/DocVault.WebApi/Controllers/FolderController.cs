@@ -1,10 +1,10 @@
 using DocVault.Core.Dtos;
-using DocVault.Core.Exceptions;
 using DocVault.Core.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DocVault.WebApi.Controllers;
 
+// Fehler (404, 400, ...) uebersetzt der GlobalExceptionHandler.
 [ApiController]
 [Route("folders")]
 public class FolderController : ControllerBase
@@ -29,14 +29,7 @@ public class FolderController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<FolderDto>> GetById(Guid id, CancellationToken ct)
     {
-        try
-        {
-            return Ok(await _folderService.GetByIdAsync(id, ct));
-        }
-        catch (FolderNotFoundException ex)
-        {
-            return NotFound(ex.Message);
-        }
+        return Ok(await _folderService.GetByIdAsync(id, ct));
     }
 
     [HttpPost]
@@ -44,15 +37,8 @@ public class FolderController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<FolderDto>> Create(CreateFolderDto dto, CancellationToken ct)
     {
-        try
-        {
-            var created = await _folderService.CreateAsync(dto, ct);
-            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
-        }
-        catch (InvalidFolderException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var created = await _folderService.CreateAsync(dto, ct);
+        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
     [HttpPut("{id:guid}")]
@@ -61,18 +47,7 @@ public class FolderController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<FolderDto>> Update(Guid id, UpdateFolderDto dto, CancellationToken ct)
     {
-        try
-        {
-            return Ok(await _folderService.UpdateAsync(id, dto, ct));
-        }
-        catch (FolderNotFoundException ex)
-        {
-            return NotFound(ex.Message);
-        }
-        catch (InvalidFolderException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        return Ok(await _folderService.UpdateAsync(id, dto, ct));
     }
 
     [HttpDelete("{id:guid}")]
@@ -81,19 +56,8 @@ public class FolderController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
-        try
-        {
-            await _folderService.DeleteAsync(id, ct);
-            return NoContent();
-        }
-        catch (FolderNotFoundException ex)
-        {
-            return NotFound(ex.Message);
-        }
-        catch (InvalidFolderException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        await _folderService.DeleteAsync(id, ct);
+        return NoContent();
     }
 
     [HttpGet("{id:guid}/documents")]
@@ -101,14 +65,7 @@ public class FolderController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<IReadOnlyList<DocumentDto>>> GetDocuments(Guid id, CancellationToken ct)
     {
-        try
-        {
-            return Ok(await _folderService.GetDocumentsAsync(id, ct));
-        }
-        catch (FolderNotFoundException ex)
-        {
-            return NotFound(ex.Message);
-        }
+        return Ok(await _folderService.GetDocumentsAsync(id, ct));
     }
 
     [HttpPut("{id:guid}/documents/{documentId:guid}")]
@@ -116,18 +73,7 @@ public class FolderController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> MoveDocument(Guid id, Guid documentId, CancellationToken ct)
     {
-        try
-        {
-            await _folderService.MoveDocumentAsync(id, documentId, ct);
-            return NoContent();
-        }
-        catch (FolderNotFoundException ex)
-        {
-            return NotFound(ex.Message);
-        }
-        catch (DocumentNotFoundException ex)
-        {
-            return NotFound(ex.Message);
-        }
+        await _folderService.MoveDocumentAsync(id, documentId, ct);
+        return NoContent();
     }
 }

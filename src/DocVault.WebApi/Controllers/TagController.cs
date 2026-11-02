@@ -1,10 +1,10 @@
 using DocVault.Core.Dtos;
-using DocVault.Core.Exceptions;
 using DocVault.Core.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DocVault.WebApi.Controllers;
 
+// Fehler (404, 400, ...) uebersetzt der GlobalExceptionHandler.
 [ApiController]
 [Route("tags")]
 public class TagController : ControllerBase
@@ -28,15 +28,8 @@ public class TagController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<TagDto>> Create(CreateTagDto dto, CancellationToken ct)
     {
-        try
-        {
-            var created = await _tagService.CreateAsync(dto, ct);
-            return CreatedAtAction(nameof(GetAll), new { id = created.Id }, created);
-        }
-        catch (InvalidTagException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var created = await _tagService.CreateAsync(dto, ct);
+        return CreatedAtAction(nameof(GetAll), new { id = created.Id }, created);
     }
 
     [HttpDelete("{id:guid}")]
@@ -44,15 +37,8 @@ public class TagController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
-        try
-        {
-            await _tagService.DeleteAsync(id, ct);
-            return NoContent();
-        }
-        catch (TagNotFoundException ex)
-        {
-            return NotFound(ex.Message);
-        }
+        await _tagService.DeleteAsync(id, ct);
+        return NoContent();
     }
 
     [HttpPut("/documents/{documentId:guid}/tags/{tagId:guid}")]
@@ -60,19 +46,8 @@ public class TagController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> AssignToDocument(Guid documentId, Guid tagId, CancellationToken ct)
     {
-        try
-        {
-            await _tagService.AssignToDocumentAsync(documentId, tagId, ct);
-            return NoContent();
-        }
-        catch (DocumentNotFoundException ex)
-        {
-            return NotFound(ex.Message);
-        }
-        catch (TagNotFoundException ex)
-        {
-            return NotFound(ex.Message);
-        }
+        await _tagService.AssignToDocumentAsync(documentId, tagId, ct);
+        return NoContent();
     }
 
     [HttpDelete("/documents/{documentId:guid}/tags/{tagId:guid}")]
@@ -80,14 +55,7 @@ public class TagController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RemoveFromDocument(Guid documentId, Guid tagId, CancellationToken ct)
     {
-        try
-        {
-            await _tagService.RemoveFromDocumentAsync(documentId, tagId, ct);
-            return NoContent();
-        }
-        catch (DocumentNotFoundException ex)
-        {
-            return NotFound(ex.Message);
-        }
+        await _tagService.RemoveFromDocumentAsync(documentId, tagId, ct);
+        return NoContent();
     }
 }
