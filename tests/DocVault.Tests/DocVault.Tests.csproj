@@ -22,6 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\DocVault.WebApi\DocVault.WebApi.csproj" />
     <ProjectReference Include="..\..\src\DocVault.Core\DocVault.Core.csproj" />
+    <ProjectReference Include="..\..\src\DocVault.OcrWorker\DocVault.OcrWorker.csproj" />
   </ItemGroup>
 
 </Project>
