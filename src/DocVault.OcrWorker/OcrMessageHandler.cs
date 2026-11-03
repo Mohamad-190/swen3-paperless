@@ -3,8 +3,7 @@ using DocVault.Core.ServiceAgents;
 
 namespace DocVault.OcrWorker;
 
-// "Leerer" OCR-Schritt (Sprint 3): Nachricht lesen und loggen.
-// In Sprint 4 kommt hier das Laden aus MinIO und die OCR mit Tesseract dazu.
+
 public sealed class OcrMessageHandler : IOcrMessageHandler
 {
     // Gleiches Format wie beim Publisher in der WebApi (camelCase)
