@@ -92,7 +92,8 @@ public class DocumentService : IDocumentService
         try
         {
             await _queuePublisher.PublishDocumentUploadedAsync(
-                new DocumentUploadedMessage(created.Id, created.FileName, created.ContentType, created.UploadedAt), ct);
+                new DocumentUploadedMessage(created.Id, created.Title, created.FileName, created.ContentType,
+                    objectKey, created.UploadedAt), ct);
         }
         catch (MessagingException ex)
         {

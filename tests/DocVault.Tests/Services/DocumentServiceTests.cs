@@ -64,13 +64,21 @@ public class DocumentServiceTests
     [Fact]
     public async Task CreateAsync_ValidInput_PublishesUploadedMessage()
     {
+        string? uploadedKey = null;
+        _storage
+            .When(s => s.UploadAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<CancellationToken>()))
+            .Do(call => uploadedKey = call.ArgAt<string>(0));
+
         var result = await _service.CreateAsync(CreateCommand("Invoice", "invoice.pdf", "application/pdf", 1024, null));
 
+        // Der Worker muss die Datei unter genau dem Key finden, unter dem sie hochgeladen wurde.
         await _queuePublisher.Received(1).PublishDocumentUploadedAsync(
             Arg.Is<DocumentUploadedMessage>(m =>
                 m.DocumentId == result.Id &&
+                m.Title == "Invoice" &&
                 m.FileName == "invoice.pdf" &&
-                m.ContentType == "application/pdf"),
+                m.ContentType == "application/pdf" &&
+                m.ObjectKey == uploadedKey),
             Arg.Any<CancellationToken>());
     }
 
