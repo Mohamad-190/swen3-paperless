@@ -1,8 +1,11 @@
 using System.Text;
 using DocVault.Core.Exceptions;
+using DocVault.Core.Infrastructure.Repositories;
+using DocVault.Core.Model;
 using DocVault.Core.ServiceAgents;
 using DocVault.OcrWorker;
 using DocVault.OcrWorker.Ocr;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
@@ -14,14 +17,34 @@ public class OcrMessageHandlerTests
     private readonly IDocumentStorage _storage = Substitute.For<IDocumentStorage>();
     private readonly IOcrEngine _ocrEngine = Substitute.For<IOcrEngine>();
     private readonly ISearchIndexer _searchIndexer = Substitute.For<ISearchIndexer>();
+    private readonly IDocumentRepository _repository = Substitute.For<IDocumentRepository>();
     private readonly ListLogger<OcrMessageHandler> _logger = new();
     private readonly OcrMessageHandler _handler;
 
     private readonly Guid _documentId = Guid.NewGuid();
+    private readonly DocumentEntity _document;
 
     public OcrMessageHandlerTests()
     {
-        _handler = new OcrMessageHandler(_storage, _ocrEngine, _searchIndexer, _logger);
+        // Echter DI-Container statt Mock fuer IServiceScopeFactory: der Handler erzeugt
+        // pro Nachricht einen eigenen Scope, in dem genau dieses _repository aufgeloest wird.
+        var services = new ServiceCollection();
+        services.AddSingleton(_repository);
+        var provider = services.BuildServiceProvider();
+        var scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
+
+        _handler = new OcrMessageHandler(_storage, _ocrEngine, _searchIndexer, scopeFactory, _logger);
+
+        _document = new DocumentEntity
+        {
+            Id = _documentId,
+            Title = "Hello",
+            FileName = "HelloWorld.pdf",
+            ContentType = "application/pdf",
+            Status = DocumentStatus.Uploaded,
+            UploadedAt = DateTime.UtcNow
+        };
+        _repository.GetByIdAsync(_documentId, Arg.Any<CancellationToken>()).Returns(_document);
 
         _storage.DownloadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(_ => new MemoryStream(Encoding.UTF8.GetBytes("%PDF-fake")));
@@ -47,6 +70,38 @@ public class OcrMessageHandlerTests
                 e.FileName == "HelloWorld.pdf" &&
                 e.Content == "Hello World"),
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task HandleAsync_ValidMessage_SetsStatusToProcessingThenCompleted()
+    {
+        await _handler.HandleAsync(ValidMessage());
+
+        Assert.Equal(DocumentStatus.Completed, _document.Status);
+        await _repository.Received(2).UpdateAsync(_document, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task HandleAsync_AlreadyCompleted_SkipsReprocessing()
+    {
+        _document.Status = DocumentStatus.Completed;
+
+        var processed = await _handler.HandleAsync(ValidMessage());
+
+        Assert.True(processed);
+        await _storage.DidNotReceiveWithAnyArgs().DownloadAsync(default!, default);
+        await _repository.DidNotReceiveWithAnyArgs().UpdateAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task HandleAsync_DocumentNoLongerExists_ReturnsFalse()
+    {
+        _repository.GetByIdAsync(_documentId, Arg.Any<CancellationToken>()).Returns((DocumentEntity?)null);
+
+        var processed = await _handler.HandleAsync(ValidMessage());
+
+        Assert.False(processed);
+        await _storage.DidNotReceiveWithAnyArgs().DownloadAsync(default!, default);
     }
 
     [Fact]
@@ -86,7 +141,7 @@ public class OcrMessageHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_StorageFails_ReturnsFalseAndDoesNotIndex()
+    public async Task HandleAsync_StorageFails_ReturnsFalseAndMarksFailed()
     {
         _storage.DownloadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new StorageException("down", new Exception()));
@@ -94,12 +149,13 @@ public class OcrMessageHandlerTests
         var processed = await _handler.HandleAsync(ValidMessage());
 
         Assert.False(processed);
+        Assert.Equal(DocumentStatus.Failed, _document.Status);
         await _searchIndexer.DidNotReceiveWithAnyArgs().IndexAsync(default!, default);
         Assert.Contains(_logger.Entries, e => e.Level == LogLevel.Error);
     }
 
     [Fact]
-    public async Task HandleAsync_OcrFails_ReturnsFalseAndDoesNotIndex()
+    public async Task HandleAsync_OcrFails_ReturnsFalseAndMarksFailed()
     {
         _ocrEngine.ExtractTextAsync(Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new OcrException("tesseract failed"));
@@ -107,11 +163,12 @@ public class OcrMessageHandlerTests
         var processed = await _handler.HandleAsync(ValidMessage());
 
         Assert.False(processed);
+        Assert.Equal(DocumentStatus.Failed, _document.Status);
         await _searchIndexer.DidNotReceiveWithAnyArgs().IndexAsync(default!, default);
     }
 
     [Fact]
-    public async Task HandleAsync_IndexingFails_ReturnsFalse()
+    public async Task HandleAsync_IndexingFails_ReturnsFalseAndMarksFailed()
     {
         _searchIndexer.IndexAsync(Arg.Any<DocumentSearchEntry>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new SearchException("es down"));
@@ -119,6 +176,7 @@ public class OcrMessageHandlerTests
         var processed = await _handler.HandleAsync(ValidMessage());
 
         Assert.False(processed);
+        Assert.Equal(DocumentStatus.Failed, _document.Status);
     }
 
     // Merkt sich alle Log-Eintraege, damit der Test den Log-Eintrag pruefen kann.
