@@ -14,11 +14,12 @@ public class DocumentServiceTests
     private readonly IDocumentRepository _repository = Substitute.For<IDocumentRepository>();
     private readonly IDocumentQueuePublisher _queuePublisher = Substitute.For<IDocumentQueuePublisher>();
     private readonly IDocumentStorage _storage = Substitute.For<IDocumentStorage>();
+    private readonly ISearchIndexer _searchIndexer = Substitute.For<ISearchIndexer>();
     private readonly DocumentService _service;
 
     public DocumentServiceTests()
     {
-        _service = new DocumentService(_repository, _queuePublisher, _storage, NullLogger<DocumentService>.Instance);
+        _service = new DocumentService(_repository, _queuePublisher, _storage, _searchIndexer, NullLogger<DocumentService>.Instance);
 
         _repository.AddAsync(Arg.Any<DocumentEntity>(), Arg.Any<CancellationToken>())
             .Returns(call => call.Arg<DocumentEntity>());
@@ -150,6 +151,45 @@ public class DocumentServiceTests
             () => _service.CreateAsync(CreateCommand("Invoice", "invoice.pdf", "application/pdf", tooLarge, null)));
 
         await _repository.DidNotReceive().AddAsync(Arg.Any<DocumentEntity>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SearchAsync_EmptyQuery_Throws()
+    {
+        await Assert.ThrowsAsync<InvalidDocumentException>(() => _service.SearchAsync("   "));
+
+        await _searchIndexer.DidNotReceive().SearchAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SearchAsync_ValidQuery_ReturnsMatchingDocumentsInOrder()
+    {
+        var first = CreateEntity("First");
+        var second = CreateEntity("Second");
+        _searchIndexer.SearchAsync("hello", Arg.Any<CancellationToken>())
+            .Returns(new List<Guid> { first.Id, second.Id });
+        _repository.GetByIdAsync(first.Id, Arg.Any<CancellationToken>()).Returns(first);
+        _repository.GetByIdAsync(second.Id, Arg.Any<CancellationToken>()).Returns(second);
+
+        var results = await _service.SearchAsync("hello");
+
+        Assert.Equal(new[] { first.Id, second.Id }, results.Select(r => r.Id));
+    }
+
+    [Fact]
+    public async Task SearchAsync_DeletedDocumentStillInIndex_IsSkipped()
+    {
+        var deletedId = Guid.NewGuid();
+        var existing = CreateEntity("Existing");
+        _searchIndexer.SearchAsync("hello", Arg.Any<CancellationToken>())
+            .Returns(new List<Guid> { deletedId, existing.Id });
+        _repository.GetByIdAsync(deletedId, Arg.Any<CancellationToken>()).Returns((DocumentEntity?)null);
+        _repository.GetByIdAsync(existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
+
+        var results = await _service.SearchAsync("hello");
+
+        Assert.Single(results);
+        Assert.Equal(existing.Id, results[0].Id);
     }
 
     [Fact]

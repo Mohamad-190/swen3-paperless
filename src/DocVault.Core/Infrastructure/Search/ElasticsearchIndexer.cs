@@ -54,4 +54,37 @@ public sealed class ElasticsearchIndexer : ISearchIndexer
         _logger.LogInformation("Indexed document {DocumentId} into {Index} ({Length} characters)",
             entry.DocumentId, _options.IndexName, entry.Content.Length);
     }
+
+    public async Task<IReadOnlyList<Guid>> SearchAsync(string query, CancellationToken ct = default)
+    {
+        SearchResponse<DocumentSearchEntry> response;
+        try
+        {
+            response = await _client.SearchAsync<DocumentSearchEntry>(s => s
+                .Indices(_options.IndexName)
+                .Query(q => q
+                    .MultiMatch(mm => mm
+                        .Query(query)
+                        .Fields(new[] { "content", "title", "fileName" })
+                        .Fuzziness(new Fuzziness("AUTO")))), ct);
+        }
+        catch (Exception ex) when (ex is TransportException or HttpRequestException)
+        {
+            _logger.LogError(ex, "Elasticsearch at {Url} is not reachable", _options.Url);
+            throw new SearchException("The search index is not reachable.", ex);
+        }
+
+        if (!response.IsValidResponse)
+        {
+            _logger.LogError("Searching {Index} for '{Query}' failed: {DebugInfo}",
+                _options.IndexName, query, response.DebugInformation);
+
+            var reason = response.ElasticsearchServerError?.Error.Reason ?? "unknown error";
+            throw response.TryGetOriginalException(out var original) && original is not null
+                ? new SearchException($"Search failed: {reason}", original)
+                : new SearchException($"Search failed: {reason}");
+        }
+
+        return response.Documents.Select(d => d.DocumentId).ToList();
+    }
 }

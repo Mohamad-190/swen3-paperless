@@ -25,6 +25,16 @@ public class DocumentController : ControllerBase
         return Ok(documents);
     }
 
+    [HttpGet("search")]
+    [ProducesResponseType(typeof(IReadOnlyList<DocumentDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<ActionResult<IReadOnlyList<DocumentDto>>> Search([FromQuery] string q, CancellationToken ct)
+    {
+        var documents = await _documentService.SearchAsync(q, ct);
+        return Ok(documents);
+    }
+
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(DocumentDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

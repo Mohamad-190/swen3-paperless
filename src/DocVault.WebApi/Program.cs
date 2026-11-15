@@ -1,6 +1,7 @@
 using DocVault.Core.Infrastructure;
 using DocVault.Core.Infrastructure.Messaging;
 using DocVault.Core.Infrastructure.Repositories;
+using DocVault.Core.Infrastructure.Search;
 using DocVault.Core.Infrastructure.Storage;
 using DocVault.Core.ServiceAgents;
 using DocVault.Core.Services;
@@ -33,6 +34,10 @@ builder.Services.AddSingleton<IDocumentQueuePublisher, RabbitMqDocumentPublisher
 // RustFS/S3: Singleton, der AmazonS3Client ist fuer Mehrfachverwendung ausgelegt
 builder.Services.Configure<S3StorageOptions>(builder.Configuration.GetSection(S3StorageOptions.SectionName));
 builder.Services.AddSingleton<IDocumentStorage, S3DocumentStorage>();
+
+// Elasticsearch: fuer die Volltextsuche ueber /documents/search
+builder.Services.Configure<ElasticsearchOptions>(builder.Configuration.GetSection(ElasticsearchOptions.SectionName));
+builder.Services.AddSingleton<ISearchIndexer, ElasticsearchIndexer>();
 
 // Zentrale Fehlerbehandlung: Exceptions aller Schichten -> ProblemDetails mit passendem Statuscode
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();

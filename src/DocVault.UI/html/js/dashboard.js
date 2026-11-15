@@ -3,6 +3,7 @@ import {
     getFolders,
     createFolder,
     uploadDocument,
+    searchDocuments,
     ApiError
 } from "./api.js";
 import { validateRequired, validateFile } from "./validate.js";
@@ -16,14 +17,21 @@ import {
     clearMessage
 } from "./format.js";
 
+const SEARCH_DEBOUNCE_MS = 300;
+
 const state = {
     documents: [],
     folders: [],
     activeFolderId: null,   // null = alle Dokumente
     query: "",
+    searchResults: null,    // null = kein Suchmodus aktiv, sonst Treffer von /documents/search
+    searching: false,
+    searchError: null,
     loading: true,
     loadError: null
 };
+
+let searchDebounceTimer = null;
 
 const el = {
     documentCount: document.getElementById("documentCount"),
@@ -119,7 +127,7 @@ function renderDocuments() {
     const activeFolder = state.folders.find(f => f.id === state.activeFolderId);
     el.documentsHeading.textContent = activeFolder ? activeFolder.name : "Alle Dokumente";
 
-    if (state.loading) {
+    if (state.loading || state.searching) {
         el.documentEmpty.hidden = true;
         el.documentList.innerHTML = Array.from({ length: 3 }, () => `
             <tr aria-hidden="true">
@@ -145,13 +153,24 @@ function renderDocuments() {
         return;
     }
 
+    if (state.searchError) {
+        el.documentList.innerHTML = "";
+        showEmpty(
+            "Suche konnte nicht durchgeführt werden.",
+            state.searchError,
+            '<button type="button" class="btn btn-quiet" id="retrySearchButton">Erneut versuchen</button>'
+        );
+        document.getElementById("retrySearchButton").addEventListener("click", () => runSearch(state.query));
+        return;
+    }
+
     const visible = filterDocuments();
     el.documentList.innerHTML = visible.map(documentRow).join("");
 
     if (visible.length > 0) {
         el.documentEmpty.hidden = true;
     } else if (state.query) {
-        showEmpty(`Keine Treffer für „${escapeHtml(state.query)}“.`, "Suche nach einem anderen Titel oder Dateinamen.");
+        showEmpty(`Keine Treffer für „${escapeHtml(state.query)}“.`, "Suche nach einem anderen Begriff – auch im Dokumentinhalt.");
     } else if (activeFolder) {
         showEmpty("Dieser Ordner ist noch leer.", "Wähle beim Hochladen diesen Ordner aus.");
     } else {
@@ -160,10 +179,10 @@ function renderDocuments() {
 }
 
 function filterDocuments() {
-    const q = state.query.toLowerCase();
-    return state.documents.filter(d =>
-        (state.activeFolderId === null || d.folderId === state.activeFolderId) &&
-        (!q || d.title.toLowerCase().includes(q) || d.fileName.toLowerCase().includes(q)));
+    // Bei aktiver Suche kommen die Dokumente schon gefiltert (nach Inhalt/Titel/Dateiname)
+    // vom /documents/search-Endpoint - hier nur noch zusaetzlich nach Ordner filtern.
+    const source = state.searchResults ?? state.documents;
+    return source.filter(d => state.activeFolderId === null || d.folderId === state.activeFolderId);
 }
 
 function documentRow(doc) {
@@ -201,8 +220,34 @@ el.folderList.addEventListener("click", (e) => {
 
 el.searchInput.addEventListener("input", (e) => {
     state.query = e.target.value.trim();
-    renderDocuments();
+    clearTimeout(searchDebounceTimer);
+
+    if (!state.query) {
+        state.searchResults = null;
+        state.searching = false;
+        state.searchError = null;
+        renderDocuments();
+        return;
+    }
+
+    searchDebounceTimer = setTimeout(() => runSearch(state.query), SEARCH_DEBOUNCE_MS);
 });
+
+async function runSearch(query) {
+    state.searching = true;
+    state.searchError = null;
+    renderDocuments();
+
+    try {
+        state.searchResults = await searchDocuments(query);
+    } catch (err) {
+        state.searchResults = [];
+        state.searchError = err instanceof ApiError ? err.message : "Unerwarteter Fehler.";
+    } finally {
+        state.searching = false;
+        renderDocuments();
+    }
+}
 
 // Ganze Zeile klickbar, der Titel bleibt ein echter Link (Tastatur, Mittelklick).
 el.documentList.addEventListener("click", (e) => {

@@ -31,6 +31,18 @@ public class DocumentControllerTests
     }
 
     [Fact]
+    public async Task Search_ReturnsOkWithMatchingDocuments()
+    {
+        var documents = new List<DocumentDto> { new() { Id = Guid.NewGuid(), Title = "Invoice" } };
+        _service.SearchAsync("Invoice", Arg.Any<CancellationToken>()).Returns(documents);
+
+        var result = await _controller.Search("Invoice", CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Same(documents, ok.Value);
+    }
+
+    [Fact]
     public async Task Upload_PassesFileMetadataAndReturnsCreated()
     {
         var created = new DocumentDto { Id = Guid.NewGuid(), Title = "Invoice" };

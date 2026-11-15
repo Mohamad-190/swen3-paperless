@@ -22,17 +22,20 @@ public class DocumentService : IDocumentService
     private readonly IDocumentRepository _repository;
     private readonly IDocumentQueuePublisher _queuePublisher;
     private readonly IDocumentStorage _storage;
+    private readonly ISearchIndexer _searchIndexer;
     private readonly ILogger<DocumentService> _logger;
 
     public DocumentService(
         IDocumentRepository repository,
         IDocumentQueuePublisher queuePublisher,
         IDocumentStorage storage,
+        ISearchIndexer searchIndexer,
         ILogger<DocumentService> logger)
     {
         _repository = repository;
         _queuePublisher = queuePublisher;
         _storage = storage;
+        _searchIndexer = searchIndexer;
         _logger = logger;
     }
 
@@ -46,6 +49,26 @@ public class DocumentService : IDocumentService
     {
         var document = await GetExistingAsync(id, ct);
         return ToDto(document);
+    }
+
+    public async Task<IReadOnlyList<DocumentDto>> SearchAsync(string query, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+            throw new InvalidDocumentException("Search query must not be empty.");
+
+        var documentIds = await _searchIndexer.SearchAsync(query.Trim(), ct);
+
+        var results = new List<DocumentDto>(documentIds.Count);
+        foreach (var id in documentIds)
+        {
+            // Dokument kann zwischenzeitlich geloescht worden sein, ohne dass der
+            // Index-Eintrag entfernt wurde - solche Treffer einfach ueberspringen.
+            var document = await _repository.GetByIdAsync(id, ct);
+            if (document is not null)
+                results.Add(ToDto(document));
+        }
+
+        return results;
     }
 
     public async Task<DocumentDto> CreateAsync(CreateDocumentCommand command, CancellationToken ct = default)
