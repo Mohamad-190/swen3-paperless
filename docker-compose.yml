@@ -70,6 +70,24 @@ services:
         condition: service_healthy
     restart: "no"
 
+  elasticsearch:
+    image: elasticsearch:8.19.25
+    environment:
+      discovery.type: single-node
+      # Nur lokal/Entwicklung: ohne Security, damit kein TLS-Zertifikat und Passwort noetig sind
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -qE '\"status\":\"(green|yellow)\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
   webapi:
     build:
       context: .
@@ -102,8 +120,18 @@ services:
       RabbitMQ__Host: rabbitmq
       RabbitMQ__UserName: ${RABBITMQ_USER}
       RabbitMQ__Password: ${RABBITMQ_PASSWORD}
+      S3Storage__ServiceUrl: http://rustfs:9000
+      S3Storage__AccessKey: ${RUSTFS_ACCESS_KEY}
+      S3Storage__SecretKey: ${RUSTFS_SECRET_KEY}
+      S3Storage__BucketName: documents
+      Elasticsearch__Url: http://elasticsearch:9200
+      Elasticsearch__IndexName: documents
     depends_on:
       rabbitmq:
+        condition: service_healthy
+      rustfs-init:
+        condition: service_completed_successfully
+      elasticsearch:
         condition: service_healthy
     restart: unless-stopped
 
@@ -119,3 +147,4 @@ services:
 volumes:
   pgdata:
   rustfsdata:
+  esdata:
