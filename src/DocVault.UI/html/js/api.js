@@ -47,6 +47,11 @@ export function getDocument(id) {
     return request(`/documents/${id}`);
 }
 
+// Volltext-/Fuzzy-Suche im erkannten Dokumenttext (OCR), Titel und Dateinamen.
+export function searchDocuments(query) {
+    return request(`/documents/search?q=${encodeURIComponent(query)}`);
+}
+
 export function uploadDocument(formData) {
     return request("/documents", { method: "POST", body: formData });
 }

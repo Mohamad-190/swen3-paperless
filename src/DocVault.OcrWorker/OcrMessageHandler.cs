@@ -1,11 +1,15 @@
 using System.Text.Json;
 using DocVault.Core.Exceptions;
+using DocVault.Core.Infrastructure.Repositories;
+using DocVault.Core.Model;
 using DocVault.Core.ServiceAgents;
 using DocVault.OcrWorker.Ocr;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DocVault.OcrWorker;
 
-// Ablauf pro Nachricht: Datei aus dem Object Storage holen -> OCR -> Text in Elasticsearch indexieren.
+// Ablauf pro Nachricht: Status -> Processing, Datei aus dem Object Storage holen -> OCR ->
+// Text in Elasticsearch indexieren -> Status -> Completed (oder Failed bei einem Fehler).
 public sealed class OcrMessageHandler : IOcrMessageHandler
 {
     // Gleiches Format wie beim Publisher in der WebApi (camelCase)
@@ -15,17 +19,20 @@ public sealed class OcrMessageHandler : IOcrMessageHandler
     private readonly IDocumentStorage _storage;
     private readonly IOcrEngine _ocrEngine;
     private readonly ISearchIndexer _searchIndexer;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<OcrMessageHandler> _logger;
 
     public OcrMessageHandler(
         IDocumentStorage storage,
         IOcrEngine ocrEngine,
         ISearchIndexer searchIndexer,
+        IServiceScopeFactory scopeFactory,
         ILogger<OcrMessageHandler> logger)
     {
         _storage = storage;
         _ocrEngine = ocrEngine;
         _searchIndexer = searchIndexer;
+        _scopeFactory = scopeFactory;
         _logger = logger;
     }
 
@@ -37,6 +44,29 @@ public sealed class OcrMessageHandler : IOcrMessageHandler
 
         _logger.LogInformation("Received document {DocumentId} ({FileName}, {ContentType}) for OCR",
             message.DocumentId, message.FileName, message.ContentType);
+
+        // Eigener DI-Scope pro Nachricht: der DbContext hinter IDocumentRepository ist
+        // nicht fuer parallele/langlebige Nutzung gedacht (anders als die Singletons oben).
+        using var scope = _scopeFactory.CreateScope();
+        var repository = scope.ServiceProvider.GetRequiredService<IDocumentRepository>();
+
+        var document = await repository.GetByIdAsync(message.DocumentId, ct);
+        if (document is null)
+        {
+            _logger.LogWarning("Document {DocumentId} no longer exists, discarding message", message.DocumentId);
+            return false;
+        }
+
+        if (document.Status == DocumentStatus.Completed)
+        {
+            // Nachricht wurde erneut zugestellt (z. B. nach einem Absturz vor dem Ack) -
+            // nicht nochmal verarbeiten, nur bestaetigen.
+            _logger.LogInformation("Document {DocumentId} was already processed, skipping", message.DocumentId);
+            return true;
+        }
+
+        document.Status = DocumentStatus.Processing;
+        await repository.UpdateAsync(document, ct);
 
         try
         {
@@ -50,11 +80,20 @@ public sealed class OcrMessageHandler : IOcrMessageHandler
             await _searchIndexer.IndexAsync(
                 new DocumentSearchEntry(message.DocumentId, message.Title, message.FileName, text, message.UploadedAt), ct);
 
+            document.Status = DocumentStatus.Completed;
+            document.UpdatedAt = DateTime.UtcNow;
+            await repository.UpdateAsync(document, ct);
+
             return true;
         }
         catch (Exception ex) when (ex is StorageException or OcrException or SearchException)
         {
             _logger.LogError(ex, "Processing document {DocumentId} failed", message.DocumentId);
+
+            document.Status = DocumentStatus.Failed;
+            document.UpdatedAt = DateTime.UtcNow;
+            await repository.UpdateAsync(document, ct);
+
             return false;
         }
     }
