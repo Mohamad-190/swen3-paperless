@@ -29,15 +29,61 @@ services:
       timeout: 5s
       retries: 10
 
+  rustfs:
+    image: rustfs/rustfs:1.0.5
+    environment:
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: 0.0.0.0:9000
+      RUSTFS_CONSOLE_ADDRESS: 0.0.0.0:9001
+      RUSTFS_CONSOLE_ENABLE: "true"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - rustfsdata:/data
+    healthcheck:
+      # Kein offizieller Healthcheck-Befehl dokumentiert. RustFS antwortet auf "/" ohne
+      # gueltige Signatur bewusst mit 403 - das zeigt aber, dass der Server laeuft.
+      # Deshalb ohne "-f": jede HTTP-Antwort zaehlt als "erreichbar", nur ein
+      # Verbindungsfehler (Server noch nicht da) laesst curl selbst fehlschlagen.
+      test: ["CMD", "curl", "-s", "-o", "/dev/null", "http://localhost:9000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # Einmaliger Init-Container: legt den Bucket "documents" an, falls er noch nicht existiert,
+  # und beendet sich danach (kein auto-create ueber Env-Variable bei RustFS dokumentiert).
+  rustfs-init:
+    image: amazon/aws-cli
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - "aws --endpoint-url http://rustfs:9000 s3api create-bucket --bucket documents || true"
+    environment:
+      AWS_ACCESS_KEY_ID: ${RUSTFS_ACCESS_KEY}
+      AWS_SECRET_ACCESS_KEY: ${RUSTFS_SECRET_KEY}
+      AWS_DEFAULT_REGION: us-east-1
+    depends_on:
+      rustfs:
+        condition: service_healthy
+    restart: "no"
+
   webapi:
     build:
       context: .
       dockerfile: src/DocVault.WebApi/Dockerfile
     environment:
+      ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DocVaultDb: "Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
       RabbitMQ__Host: rabbitmq
       RabbitMQ__UserName: ${RABBITMQ_USER}
       RabbitMQ__Password: ${RABBITMQ_PASSWORD}
+      S3Storage__ServiceUrl: http://rustfs:9000
+      S3Storage__AccessKey: ${RUSTFS_ACCESS_KEY}
+      S3Storage__SecretKey: ${RUSTFS_SECRET_KEY}
+      S3Storage__BucketName: documents
     ports:
       - "8081:8080"
     depends_on:
@@ -45,6 +91,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      rustfs-init:
+        condition: service_completed_successfully
 
   ocr-worker:
     build:
@@ -70,3 +118,4 @@ services:
 
 volumes:
   pgdata:
+  rustfsdata:

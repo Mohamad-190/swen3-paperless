@@ -46,6 +46,8 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
         BusinessValidationException => (StatusCodes.Status400BadRequest, "Invalid request", exception.Message),
         MessagingException => (StatusCodes.Status503ServiceUnavailable, "Service unavailable",
             "The document was saved but could not be queued for processing. Please try again later."),
+        StorageException => (StatusCodes.Status503ServiceUnavailable, "Service unavailable",
+            "The object storage is not reachable. Please try again later."),
         DataAccessException => (StatusCodes.Status500InternalServerError, "Database error",
             "A database error occurred. Please try again later."),
         _ => (StatusCodes.Status500InternalServerError, "Unexpected error", "An unexpected error occurred.")

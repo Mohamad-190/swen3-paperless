@@ -40,12 +40,14 @@ public class DocumentController : ControllerBase
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<ActionResult<DocumentDto>> Upload([FromForm] UploadDocumentRequest request, CancellationToken ct)
     {
+        await using var fileStream = request.File.OpenReadStream();
         var command = new CreateDocumentCommand(
             request.Title,
             request.File.FileName,
             request.File.ContentType,
             request.File.Length,
-            request.FolderId);
+            request.FolderId,
+            fileStream);
 
         var created = await _documentService.CreateAsync(command, ct);
 

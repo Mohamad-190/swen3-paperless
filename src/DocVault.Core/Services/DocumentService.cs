@@ -21,12 +21,18 @@ public class DocumentService : IDocumentService
 
     private readonly IDocumentRepository _repository;
     private readonly IDocumentQueuePublisher _queuePublisher;
+    private readonly IDocumentStorage _storage;
     private readonly ILogger<DocumentService> _logger;
 
-    public DocumentService(IDocumentRepository repository, IDocumentQueuePublisher queuePublisher, ILogger<DocumentService> logger)
+    public DocumentService(
+        IDocumentRepository repository,
+        IDocumentQueuePublisher queuePublisher,
+        IDocumentStorage storage,
+        ILogger<DocumentService> logger)
     {
         _repository = repository;
         _queuePublisher = queuePublisher;
+        _storage = storage;
         _logger = logger;
     }
 
@@ -59,6 +65,12 @@ public class DocumentService : IDocumentService
             throw new InvalidDocumentException(
                 $"File type '{command.ContentType}' is not allowed. Allowed types: {string.Join(", ", AllowedContentTypes)}.");
 
+        var objectKey = Guid.NewGuid().ToString();
+
+        // Erst die Datei wirklich in RustFS ablegen - schlaegt das fehl, wird gar nichts
+        // in der DB gespeichert, statt ein Dokument ohne zugehoerige Datei anzulegen.
+        await _storage.UploadAsync(objectKey, command.Content, command.ContentType, ct);
+
         var document = new DocumentEntity
         {
             Id = Guid.NewGuid(),
@@ -66,6 +78,7 @@ public class DocumentService : IDocumentService
             FileName = command.FileName,
             ContentType = command.ContentType,
             FileSize = command.FileSize,
+            ObjectKey = objectKey,
             Status = DocumentStatus.Uploaded,
             UploadedAt = DateTime.UtcNow,
             FolderId = command.FolderId
