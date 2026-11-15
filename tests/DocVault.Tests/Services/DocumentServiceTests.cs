@@ -13,15 +13,20 @@ public class DocumentServiceTests
 {
     private readonly IDocumentRepository _repository = Substitute.For<IDocumentRepository>();
     private readonly IDocumentQueuePublisher _queuePublisher = Substitute.For<IDocumentQueuePublisher>();
+    private readonly IDocumentStorage _storage = Substitute.For<IDocumentStorage>();
     private readonly DocumentService _service;
 
     public DocumentServiceTests()
     {
-        _service = new DocumentService(_repository, _queuePublisher, NullLogger<DocumentService>.Instance);
+        _service = new DocumentService(_repository, _queuePublisher, _storage, NullLogger<DocumentService>.Instance);
 
         _repository.AddAsync(Arg.Any<DocumentEntity>(), Arg.Any<CancellationToken>())
             .Returns(call => call.Arg<DocumentEntity>());
     }
+
+    // Helper, damit die Tests nicht ueberall "new MemoryStream()" wiederholen muessen.
+    private static CreateDocumentCommand CreateCommand(string title, string fileName, string contentType, long fileSize, Guid? folderId = null) =>
+        new(title, fileName, contentType, fileSize, folderId, new MemoryStream());
 
     private static DocumentEntity CreateEntity(string title = "Invoice") => new()
     {
@@ -37,7 +42,7 @@ public class DocumentServiceTests
     [Fact]
     public async Task CreateAsync_ValidInput_SavesDocumentWithUploadedStatus()
     {
-        var result = await _service.CreateAsync(new CreateDocumentCommand("  Invoice  ", "invoice.pdf", "application/pdf", 1024, null));
+        var result = await _service.CreateAsync(CreateCommand("  Invoice  ", "invoice.pdf", "application/pdf", 1024, null));
 
         Assert.NotEqual(Guid.Empty, result.Id);
         Assert.Equal("Invoice", result.Title);
@@ -51,7 +56,7 @@ public class DocumentServiceTests
     public async Task CreateAsync_EmptyTitle_ThrowsAndDoesNotSave()
     {
         await Assert.ThrowsAsync<InvalidDocumentException>(
-            () => _service.CreateAsync(new CreateDocumentCommand("   ", "invoice.pdf", "application/pdf", 1024, null)));
+            () => _service.CreateAsync(CreateCommand("   ", "invoice.pdf", "application/pdf", 1024, null)));
 
         await _repository.DidNotReceive().AddAsync(Arg.Any<DocumentEntity>(), Arg.Any<CancellationToken>());
     }
@@ -59,7 +64,7 @@ public class DocumentServiceTests
     [Fact]
     public async Task CreateAsync_ValidInput_PublishesUploadedMessage()
     {
-        var result = await _service.CreateAsync(new CreateDocumentCommand("Invoice", "invoice.pdf", "application/pdf", 1024, null));
+        var result = await _service.CreateAsync(CreateCommand("Invoice", "invoice.pdf", "application/pdf", 1024, null));
 
         await _queuePublisher.Received(1).PublishDocumentUploadedAsync(
             Arg.Is<DocumentUploadedMessage>(m =>
@@ -73,8 +78,22 @@ public class DocumentServiceTests
     public async Task CreateAsync_InvalidInput_DoesNotPublish()
     {
         await Assert.ThrowsAsync<InvalidDocumentException>(
-            () => _service.CreateAsync(new CreateDocumentCommand("   ", "invoice.pdf", "application/pdf", 1024, null)));
+            () => _service.CreateAsync(CreateCommand("   ", "invoice.pdf", "application/pdf", 1024, null)));
 
+        await _queuePublisher.DidNotReceive().PublishDocumentUploadedAsync(
+            Arg.Any<DocumentUploadedMessage>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateAsync_StorageFails_DoesNotSaveOrPublish()
+    {
+        _storage.UploadAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new StorageException("storage down", new IOException()));
+
+        await Assert.ThrowsAsync<StorageException>(
+            () => _service.CreateAsync(CreateCommand("Invoice", "invoice.pdf", "application/pdf", 1024, null)));
+
+        await _repository.DidNotReceive().AddAsync(Arg.Any<DocumentEntity>(), Arg.Any<CancellationToken>());
         await _queuePublisher.DidNotReceive().PublishDocumentUploadedAsync(
             Arg.Any<DocumentUploadedMessage>(), Arg.Any<CancellationToken>());
     }
@@ -86,7 +105,7 @@ public class DocumentServiceTests
             .Returns<DocumentEntity>(_ => throw new InvalidOperationException("db down"));
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.CreateAsync(new CreateDocumentCommand("Invoice", "invoice.pdf", "application/pdf", 1024, null)));
+            () => _service.CreateAsync(CreateCommand("Invoice", "invoice.pdf", "application/pdf", 1024, null)));
 
         await _queuePublisher.DidNotReceive().PublishDocumentUploadedAsync(
             Arg.Any<DocumentUploadedMessage>(), Arg.Any<CancellationToken>());
@@ -99,7 +118,7 @@ public class DocumentServiceTests
             .Returns<Task>(_ => throw new MessagingException("broker down", new IOException()));
 
         await Assert.ThrowsAsync<MessagingException>(
-            () => _service.CreateAsync(new CreateDocumentCommand("Invoice", "invoice.pdf", "application/pdf", 1024, null)));
+            () => _service.CreateAsync(CreateCommand("Invoice", "invoice.pdf", "application/pdf", 1024, null)));
 
         await _repository.Received(1).UpdateAsync(
             Arg.Is<DocumentEntity>(d => d.Status == DocumentStatus.Failed), Arg.Any<CancellationToken>());
@@ -109,7 +128,7 @@ public class DocumentServiceTests
     public async Task CreateAsync_DisallowedContentType_ThrowsAndDoesNotSave()
     {
         await Assert.ThrowsAsync<InvalidDocumentException>(
-            () => _service.CreateAsync(new CreateDocumentCommand("Invoice", "invoice.exe", "application/x-msdownload", 1024, null)));
+            () => _service.CreateAsync(CreateCommand("Invoice", "invoice.exe", "application/x-msdownload", 1024, null)));
 
         await _repository.DidNotReceive().AddAsync(Arg.Any<DocumentEntity>(), Arg.Any<CancellationToken>());
     }
@@ -120,7 +139,7 @@ public class DocumentServiceTests
         const long tooLarge = 21L * 1024 * 1024;
 
         await Assert.ThrowsAsync<InvalidDocumentException>(
-            () => _service.CreateAsync(new CreateDocumentCommand("Invoice", "invoice.pdf", "application/pdf", tooLarge, null)));
+            () => _service.CreateAsync(CreateCommand("Invoice", "invoice.pdf", "application/pdf", tooLarge, null)));
 
         await _repository.DidNotReceive().AddAsync(Arg.Any<DocumentEntity>(), Arg.Any<CancellationToken>());
     }

@@ -33,6 +33,7 @@ public class DocVaultDbContext : DbContext
             entity.Property(d => d.Title).IsRequired().HasMaxLength(200);
             entity.Property(d => d.FileName).IsRequired().HasMaxLength(255);
             entity.Property(d => d.ContentType).IsRequired().HasMaxLength(100);
+            entity.Property(d => d.ObjectKey).HasMaxLength(100);
             entity.Property(d => d.Status).HasConversion<string>().HasMaxLength(20);
             entity.HasIndex(d => d.FolderId);
         });

@@ -5,4 +5,5 @@ public record CreateDocumentCommand(
     string FileName,
     string ContentType,
     long FileSize,
-    Guid? FolderId);
+    Guid? FolderId,
+    Stream Content);

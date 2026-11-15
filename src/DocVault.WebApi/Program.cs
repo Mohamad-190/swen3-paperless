@@ -1,6 +1,7 @@
 using DocVault.Core.Infrastructure;
 using DocVault.Core.Infrastructure.Messaging;
 using DocVault.Core.Infrastructure.Repositories;
+using DocVault.Core.Infrastructure.Storage;
 using DocVault.Core.ServiceAgents;
 using DocVault.Core.Services;
 using DocVault.WebApi.ExceptionHandling;
@@ -29,6 +30,10 @@ builder.Services.AddScoped<ITagService, TagService>();
 builder.Services.Configure<RabbitMqOptions>(builder.Configuration.GetSection(RabbitMqOptions.SectionName));
 builder.Services.AddSingleton<IDocumentQueuePublisher, RabbitMqDocumentPublisher>();
 
+// RustFS/S3: Singleton, der AmazonS3Client ist fuer Mehrfachverwendung ausgelegt
+builder.Services.Configure<S3StorageOptions>(builder.Configuration.GetSection(S3StorageOptions.SectionName));
+builder.Services.AddSingleton<IDocumentStorage, S3DocumentStorage>();
+
 // Zentrale Fehlerbehandlung: Exceptions aller Schichten -> ProblemDetails mit passendem Statuscode
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
@@ -38,6 +43,13 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<DocVaultDbContext>();
+
+    // Nur in Development: DB bei jedem Start komplett leeren, damit man mit sauberen
+    // Testdaten startet. In Production (oder wenn ASPNETCORE_ENVIRONMENT fehlt) NIE
+    // ausfuehren, sonst gehen bei jedem Neustart alle Daten verloren.
+    if (app.Environment.IsDevelopment())
+        db.Database.EnsureDeleted();
+
     db.Database.Migrate();
 }
 

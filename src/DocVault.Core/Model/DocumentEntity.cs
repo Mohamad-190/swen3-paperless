@@ -12,6 +12,11 @@ public class DocumentEntity
 
     public long FileSize { get; set; }
 
+    // Dateiname in RustFS/S3 (GUID, nicht der Originalname). Null, solange der Upload
+    // in RustFS fehlschlaegt und das Dokument deshalb gar nicht erst gespeichert wird -
+    // aktuell also praktisch nie, aber nullable fuer alte Daten vor dieser Aenderung.
+    public string? ObjectKey { get; set; }
+
     public string? Summary { get; set; }
 
     public DocumentStatus Status { get; set; } = DocumentStatus.Uploaded;
