@@ -8,6 +8,9 @@ public interface IDocumentService
 
     Task<DocumentDto> GetByIdAsync(Guid id, CancellationToken ct = default);
 
+    // Per OCR erkannter Text des Dokuments (Content ist null, solange er noch nicht vorliegt).
+    Task<DocumentContentDto> GetContentAsync(Guid id, CancellationToken ct = default);
+
     Task<DocumentDto> CreateAsync(CreateDocumentCommand command, CancellationToken ct = default);
 
     // Volltext-/Fuzzy-Suche im per OCR erkannten Text, Titel und Dateinamen.

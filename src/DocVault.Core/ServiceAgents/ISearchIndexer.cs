@@ -8,4 +8,7 @@ public interface ISearchIndexer
     // Volltext-/Fuzzy-Suche ueber Content, Title und FileName. Liefert Dokument-IDs,
     // absteigend nach Relevanz sortiert.
     Task<IReadOnlyList<Guid>> SearchAsync(string query, CancellationToken ct = default);
+
+    // Liefert den OCR-Text eines Dokuments oder null, wenn es (noch) nicht im Index ist.
+    Task<string?> GetContentAsync(Guid documentId, CancellationToken ct = default);
 }

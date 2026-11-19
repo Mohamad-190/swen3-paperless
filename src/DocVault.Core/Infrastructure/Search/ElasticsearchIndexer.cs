@@ -87,4 +87,32 @@ public sealed class ElasticsearchIndexer : ISearchIndexer
 
         return response.Documents.Select(d => d.DocumentId).ToList();
     }
+
+    public async Task<string?> GetContentAsync(Guid documentId, CancellationToken ct = default)
+    {
+        GetResponse<DocumentSearchEntry> response;
+        try
+        {
+            response = await _client.GetAsync<DocumentSearchEntry>(_options.IndexName, documentId.ToString(), ct);
+        }
+        catch (Exception ex) when (ex is TransportException or HttpRequestException)
+        {
+            _logger.LogError(ex, "Elasticsearch at {Url} is not reachable", _options.Url);
+            throw new SearchException("The search index is not reachable.", ex);
+        }
+
+        // Noch nicht von der OCR verarbeitet (oder Index existiert noch nicht) -> kein Text.
+        if (!response.IsValidResponse || !response.Found)
+        {
+            if (response.ApiCallDetails.HttpStatusCode is not (404 or null))
+            {
+                _logger.LogError("Reading document {DocumentId} from {Index} failed: {DebugInfo}",
+                    documentId, _options.IndexName, response.DebugInformation);
+                throw new SearchException("Reading the recognized text failed.");
+            }
+            return null;
+        }
+
+        return response.Source?.Content;
+    }
 }

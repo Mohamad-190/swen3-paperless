@@ -1,4 +1,4 @@
-import { getDocument, updateDocument, deleteDocument, getFolders, ApiError } from "./api.js";
+import { getDocument, getDocumentContent, updateDocument, deleteDocument, getFolders, ApiError } from "./api.js";
 import { validateRequired } from "./validate.js";
 import { statusBadge, formatType, formatSize, formatDate, showMessage, clearMessage } from "./format.js";
 
@@ -19,6 +19,7 @@ const el = {
     uploadedAt: document.getElementById("docUploadedAt"),
     updatedAt: document.getElementById("docUpdatedAt"),
     summary: document.getElementById("docSummary"),
+    content: document.getElementById("docContent"),
     editForm: document.getElementById("editForm"),
     editTitle: document.getElementById("editTitle"),
     editFolder: document.getElementById("editFolder"),
@@ -54,6 +55,7 @@ async function load() {
         renderDocument(doc);
         renderFolderOptions(doc.folderId);
         show(el.detail);
+        loadContent();
     } catch (err) {
         if (err instanceof ApiError && (err.status === 404 || err.status === 400)) {
             show(el.notFound);
@@ -62,6 +64,26 @@ async function load() {
         el.loadErrorText.textContent = err instanceof ApiError ? err.message : "Unerwarteter Fehler.";
         show(el.loadError);
     }
+}
+
+// Der OCR-Text kommt separat (aus Elasticsearch) und darf die Detailseite nicht blockieren.
+async function loadContent() {
+    setContent("Text wird geladen …", true);
+    try {
+        const { content } = await getDocumentContent(documentId);
+        if (content && content.trim()) {
+            setContent(content, false);
+        } else {
+            setContent("Noch kein Text erkannt. Er erscheint hier, sobald die Texterkennung abgeschlossen ist.", true);
+        }
+    } catch (err) {
+        setContent(err instanceof ApiError ? err.message : "Der erkannte Text konnte nicht geladen werden.", true);
+    }
+}
+
+function setContent(text, pending) {
+    el.content.classList.toggle("is-pending", pending);
+    el.content.textContent = text;
 }
 
 function renderDocument(doc) {

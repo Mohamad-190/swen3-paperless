@@ -51,6 +51,13 @@ public class DocumentService : IDocumentService
         return ToDto(document);
     }
 
+    public async Task<DocumentContentDto> GetContentAsync(Guid id, CancellationToken ct = default)
+    {
+        await GetExistingAsync(id, ct);
+        var content = await _searchIndexer.GetContentAsync(id, ct);
+        return new DocumentContentDto { Content = content };
+    }
+
     public async Task<IReadOnlyList<DocumentDto>> SearchAsync(string query, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(query))

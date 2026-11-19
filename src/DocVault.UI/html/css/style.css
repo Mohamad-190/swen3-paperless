@@ -670,6 +670,24 @@ input[aria-invalid="true"] {
     color: var(--muted);
 }
 
+.ocr-text {
+    margin: 0;
+    max-height: 420px;
+    overflow: auto;
+    padding: 12px 14px;
+    background: var(--bg, #faf9f6);
+    border: 1px solid var(--border, #e6e3dc);
+    border-radius: 8px;
+    font: inherit;
+    font-size: 0.9rem;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.ocr-text.is-pending {
+    color: var(--muted);
+}
+
 .edit-fields {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 220px auto;

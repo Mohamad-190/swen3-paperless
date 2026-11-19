@@ -64,6 +64,15 @@ public class DocumentController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
+    [HttpGet("{id:guid}/content")]
+    [ProducesResponseType(typeof(DocumentContentDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<ActionResult<DocumentContentDto>> GetContent(Guid id, CancellationToken ct)
+    {
+        return Ok(await _documentService.GetContentAsync(id, ct));
+    }
+
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(DocumentDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

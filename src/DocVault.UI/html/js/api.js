@@ -52,6 +52,11 @@ export function searchDocuments(query) {
     return request(`/documents/search?q=${encodeURIComponent(query)}`);
 }
 
+// Per OCR erkannter Text eines Dokuments: { content: string | null }
+export function getDocumentContent(id) {
+    return request(`/documents/${id}/content`);
+}
+
 export function uploadDocument(formData) {
     return request("/documents", { method: "POST", body: formData });
 }
